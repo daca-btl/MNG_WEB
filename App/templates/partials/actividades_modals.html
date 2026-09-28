@@ -1,89 +1,195 @@
+<style>
+    .modal-hero-gradient {
+        background: linear-gradient(135deg, #198754 0%, #115c39 100%);
+    }
+    
+    .timeline-container {
+        position: relative;
+        padding-left: 2rem;
+    }
+    .timeline-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0.5rem;
+        width: 2px;
+        background: #e9ecef;
+        border-radius: 2px;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 2.5rem;
+    }
+    .timeline-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .timeline-icon {
+        position: absolute;
+        left: -2.5rem;
+        top: 0;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #198754;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 0 4px #f8f9fa;
+        z-index: 1;
+        transition: all 0.3s ease;
+    }
+    .timeline-item:hover .timeline-icon {
+        background: #198754;
+        color: #fff;
+        transform: scale(1.1);
+    }
+    
+    .timeline-content {
+        background: #ffffff;
+        border: 1px solid #f1f3f5;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .timeline-item:hover .timeline-content {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        border-color: #dee2e6;
+        transform: translateY(-3px);
+    }
+    
+    .info-pill {
+        background: #f8f9fa;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        border: 1px solid #e9ecef;
+    }
+</style>
+
 <div class="modal fade" id="modalActividades-{{ destino.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content rounded-4 border-0 shadow-lg">
-            <div class="modal-header bg-success bg-opacity-10 border-0 p-4 pb-3">
-                <div>
-                    <h4 class="modal-title fw-bold text-success">{{ destino.nombre }}</h4>
-                    <p class="mb-0 text-muted small">Actividades incluidas en este destino</p>
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            
+            <!-- Encabezado Inmersivo -->
+            <div class="modal-header border-0 p-5 position-relative modal-hero-gradient text-white">
+                <div class="position-relative z-1 w-100 d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="badge bg-white text-success rounded-pill px-3 py-1 mb-3 shadow-sm fw-bold" style="letter-spacing: 1px; font-size: 0.7rem;">ITINERARIO Y EXPERIENCIAS</span>
+                        <h3 class="modal-title fw-black mb-2 display-5" style="font-weight: 800; letter-spacing: -1px;">{{ destino.nombre }}</h3>
+                        <p class="mb-0 text-white-50 fs-6 fw-light"><i class="bi bi-geo-alt-fill me-2"></i>Descubre cada paso de esta gran aventura</p>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white shadow-sm rounded-circle p-2 opacity-75" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4 pt-2">
-                <div class="list-group list-group-flush gap-2">
-                    
-                    {% for actividad in destino.actividades.all %}
-                        {% if actividad.estado or user.is_staff %}
-                            
-                            <div class="list-group-item {% if not actividad.estado %}bg-danger bg-opacity-10 border border-danger-subtle{% else %}bg-light{% endif %} rounded-3 border-0 p-3 mb-2 shadow-sm">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="fw-bold text-dark mb-0">
-                                        {% if actividad.estado %}
-                                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                        {% else %}
-                                            <i class="bi bi-eye-slash-fill text-danger me-2"></i>
-                                        {% endif %}
-                                        {{ actividad.nombre }}
-                                    </h6>
-                                    
-                                    <div>
-                                        {% if not actividad.estado %}
-                                            <span class="badge bg-danger text-white me-1">Inactiva (Oculta al público)</span>
-                                        {% endif %}
-
-                                        {% if actividad.apto_menores %}
-                                            <span class="badge bg-info text-dark">Apto para menores</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">No Apto para menores</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="small ps-4">
-                                    <p class="text-muted mb-3">
-                                        <strong class="text-dark">Descripción:</strong>
-                                        {{ actividad.descripcion|default:"Sin descripción registrada." }}
-                                    </p>
-
-                                    <div class="row g-2 mb-3">
-                                        <div class="col-12 col-md-6">
-                                            <div class="bg-white border rounded p-2 h-100">
-                                                <div class="text-success fw-semibold mb-1">
-                                                    <i class="bi bi-backpack-fill me-1"></i>Equipo requerido
-                                                </div>
-                                                <span class="text-secondary">{{ actividad.equipo_requerimiento|default:"No especificado." }}</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 col-md-6">
-                                            <div class="bg-white border rounded p-2 h-100">
-                                                <div class="text-success fw-semibold mb-1">
-                                                    <i class="bi bi-lightbulb-fill me-1"></i>Recomendaciones
-                                                </div>
-                                                <span class="text-secondary">{{ actividad.recomendaciones|default:"No hay recomendaciones registradas." }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        {% endif %}
-                    {% empty %}
-                        <div class="text-center py-5">
-                            <i class="bi bi-calendar-x text-muted fs-1 mb-3 d-block"></i>
-                            <p class="text-muted">No hay actividades asignadas aún.</p>
+            
+            <div class="modal-body p-4 p-md-5 bg-light">
+                
+                {% if not destino.actividades.exists %}
+                    <div class="text-center py-5">
+                        <div class="bg-white rounded-circle shadow-sm d-inline-flex p-4 mb-3 border">
+                            <i class="bi bi-compass text-muted display-4"></i>
                         </div>
-                    {% endfor %}
-
-                </div>
+                        <h4 class="fw-bold text-dark">Aventura en preparación</h4>
+                        <p class="text-muted">Pronto revelaremos el itinerario y las actividades de este destino.</p>
+                    </div>
+                {% else %}
+                    <div class="timeline-container">
+                        {% for actividad in destino.actividades.all %}
+                            {% if actividad.estado or user.is_staff %}
+                                <div class="timeline-item {% if not actividad.estado %}opacity-75{% endif %}">
+                                    <div class="timeline-icon text-success">
+                                        <i class="bi bi-geo-fill"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                                            <h4 class="fw-bold text-dark mb-0">{{ actividad.nombre }}</h4>
+                                            
+                                            <div class="d-flex gap-2">
+                                                {% if not actividad.estado %}
+                                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2 fw-semibold">Oculta al público</span>
+                                                {% endif %}
+                                                
+                                                {% if actividad.apto_menores %}
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 fw-semibold">
+                                                        <i class="bi bi-emoji-smile me-1"></i> Apto Menores
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-dark-subtle text-dark border border-dark-subtle rounded-pill px-3 py-2 fw-semibold">
+                                                        <i class="bi bi-person-slash me-1"></i> Solo Adultos
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <p class="text-muted mb-4 fs-6 lh-lg">
+                                            {{ actividad.descripcion|default:"Experimenta y disfruta cada momento de esta etapa del viaje." }}
+                                        </p>
+                                        
+                                        <div class="row g-3">
+                                            {% if actividad.equipo_requerimiento %}
+                                            <div class="col-12 col-md-6">
+                                                <div class="info-pill h-100">
+                                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                                        <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                                            <i class="bi bi-backpack-fill small"></i>
+                                                        </div>
+                                                        <h6 class="fw-bold text-dark mb-0 fs-6">Equipo Requerido</h6>
+                                                    </div>
+                                                    <p class="small text-muted mb-0 lh-base ps-4 ms-1">{{ actividad.equipo_requerimiento }}</p>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if actividad.recomendaciones %}
+                                            <div class="col-12 col-md-6">
+                                                <div class="info-pill h-100">
+                                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                                        <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;">
+                                                            <i class="bi bi-lightbulb-fill small"></i>
+                                                        </div>
+                                                        <h6 class="fw-bold text-dark mb-0 fs-6">Tips y Recomendaciones</h6>
+                                                    </div>
+                                                    <p class="small text-muted mb-0 lh-base ps-4 ms-1">{{ actividad.recomendaciones }}</p>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if not actividad.equipo_requerimiento and not actividad.recomendaciones %}
+                                            <div class="col-12">
+                                                <div class="info-pill d-flex align-items-center gap-2 text-muted small">
+                                                    <i class="bi bi-info-circle-fill"></i> No hay requerimientos adicionales para esta actividad.
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
-            <div class="modal-footer border-0 p-4 pt-0">
-                <button type="button" class="btn btn-light rounded-pill px-4 fw-semibold border" data-bs-dismiss="modal">Volver</button>
+            
+            <div class="modal-footer border-0 p-4 bg-white d-flex justify-content-between align-items-center shadow-lg">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4 py-2 fw-semibold" data-bs-dismiss="modal">
+                    <i class="bi bi-arrow-left me-1"></i> Regresar
+                </button>
+                
                 {% if not user.is_authenticated or user.es_turista %}
-                    <a href="{% url 'reservas' %}?paquete_id={{ destino.id }}" class="btn btn-success rounded-pill px-4 shadow-sm fw-bold">Reservar ahora</a>
+                    <a href="{% url 'reservas' %}?paquete_id={{ destino.id }}" class="btn btn-success rounded-pill px-5 py-2 fw-bold shadow">
+                        <i class="bi bi-calendar-check me-2"></i>Reservar Destino
+                    </a>
                 {% elif user.es_admin %}
-                    <a href="{% url 'editar_paquete' destino.id %}" class="btn btn-outline-primary rounded-pill px-4 shadow-sm fw-bold">
-                        <i class="bi bi-pencil-square me-1"></i>Editar paquete
+                    <a href="{% url 'editar_paquete' destino.id %}" class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow">
+                        <i class="bi bi-pencil-square me-2"></i>Gestionar Destino
                     </a>
                 {% endif %}
             </div>
+            
         </div>
     </div>
 </div>
