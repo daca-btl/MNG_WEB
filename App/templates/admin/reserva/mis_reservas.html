@@ -184,13 +184,7 @@
                                                                 <form method="POST" action="{% url 'cancelar_reserva_usuario' reserva.id %}">
                                                                     {% csrf_token %}
                                                                     <div class="modal-body text-start p-4">
-                                                                        <div class="alert alert-warning p-3 rounded-3 small mb-3">
-                                                                            <strong>Políticas de Cancelación:</strong><br>
-                                                                            • Más de 15 días antes: 90% reembolso.<br>
-                                                                            • Entre 5 y 15 días antes: 50% reembolso.<br>
-                                                                            • Entre 2 y 4 días antes (48 a 96 horas): 50% reembolso.<br>
-                                                                            • Menos de 2 días (48 horas): Sin reembolso.
-                                                                        </div>
+                                                                        {% include "partials/politicas_cancelacion.html" %}
 
                                                                         <div class="mb-3">
                                                                             <label for="motivo_{{ reserva.id }}" class="form-label fw-bold">Ingresa el motivo de la cancelación <span class="text-danger">*</span></label>
