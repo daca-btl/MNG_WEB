@@ -133,6 +133,7 @@ urlpatterns = [
     path('notificaciones/marcar-leida/<int:notificacion_id>/', notificacion_views.marcar_notificacion_leida, name='marcar_notificacion_leida'),
     path('notificaciones/marcar-todas/', notificacion_views.marcar_todas_leidas, name='marcar_todas_leidas'),
     path('notificaciones/eliminar/<int:notificacion_id>/', notificacion_views.eliminar_notificacion, name='eliminar_notificacion'),
+    path('notificaciones/count/', notificacion_views.badge_notificaciones, name='badge_notificaciones'),
 
     # Bitácora
     path('bitacora/', bitacora_views.listar_bitacora, name='listar_bitacora'),

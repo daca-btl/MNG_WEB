@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.utils.http import url_has_allowed_host_and_scheme
 from App.models import Notificacion
@@ -60,11 +60,28 @@ def marcar_notificacion_leida(request, notificacion_id):
 
 
 @login_required(login_url='login')
+def badge_notificaciones(request):
+    """
+    Retorna el badge con el conteo de notificaciones no leídas para HTMX.
+    """
+    total_no_leidas = Notificacion.objects.filter(usuario=request.user, leido=False).count()
+    if total_no_leidas > 0:
+        return HttpResponse(f'<span id="badgeCampanaNotif" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-2 border-white fw-bold shadow d-flex align-items-center justify-content-center animate-pulse">{total_no_leidas}</span>')
+    else:
+        return HttpResponse('<span id="badgeCampanaNotif" class="d-none"></span>')
+
+
+@login_required(login_url='login')
 def marcar_todas_leidas(request):
     """
     Marca todas las notificaciones del usuario como leídas.
     """
     Notificacion.objects.filter(usuario=request.user, leido=False).update(leido=True)
+    if request.headers.get('HX-Request'):
+        response = HttpResponse()
+        response['HX-Refresh'] = 'true'
+        return response
+        
     messages.success(request, 'Todas las notificaciones han sido marcadas como leídas.')
     return redirect(request.META.get('HTTP_REFERER', 'listar_notificaciones'))
 
@@ -76,6 +93,9 @@ def eliminar_notificacion(request, notificacion_id):
     """
     notificacion = get_object_or_404(Notificacion, id=notificacion_id, usuario=request.user)
     notificacion.delete()
+
+    if request.headers.get('HX-Request'):
+        return HttpResponse('')
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('format') == 'json':
         return JsonResponse({'status': 'ok', 'mensaje': 'Notificación eliminada'})

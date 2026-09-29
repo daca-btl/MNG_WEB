@@ -39,10 +39,10 @@
       <div class="col-lg-5 text-lg-end">
         <div class="d-flex flex-wrap align-items-center justify-content-lg-end gap-2">
           {% if total_no_leidas > 0 %}
-            <a href="{% url 'marcar_todas_leidas' %}" class="btn btn-outline-success rounded-pill px-4 py-2 fw-semibold shadow-sm d-inline-flex align-items-center gap-2">
+            <button hx-post="{% url 'marcar_todas_leidas' %}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' class="btn btn-outline-success rounded-pill px-4 py-2 fw-semibold shadow-sm d-inline-flex align-items-center gap-2">
               <i class="bi bi-check2-all fs-5"></i>
               <span>Marcar todas como leídas</span>
-            </a>
+            </button>
           {% endif %}
           <a href="{% url 'configuracion_usuario' %}" class="btn btn-light border rounded-pill px-4 py-2 fw-semibold shadow-sm d-inline-flex align-items-center gap-2" title="Ajustes de alertas">
             <i class="bi bi-gear-fill text-muted"></i>
@@ -169,9 +169,17 @@
 
                 <!-- Botones de Acción -->
                 <div class="d-flex align-items-center gap-2 align-self-end align-self-md-center flex-shrink-0">
-                  <a href="{% url 'eliminar_notificacion' noti.id %}" class="btn btn-sm btn-outline-danger border-0 rounded-circle p-2" title="Eliminar notificación" onclick="event.stopPropagation(); return confirm('¿Deseas eliminar esta notificación?');">
+                  <button type="button" 
+                          class="btn btn-sm btn-outline-danger border-0 rounded-circle p-2" 
+                          title="Eliminar notificación" 
+                          hx-delete="{% url 'eliminar_notificacion' noti.id %}"
+                          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                          hx-target="closest .notification-item"
+                          hx-swap="outerHTML swap:0.3s"
+                          hx-confirm="¿Deseas eliminar esta notificación?"
+                          onclick="event.stopPropagation();">
                     <i class="bi bi-trash-fill fs-6"></i>
-                  </a>
+                  </button>
                 </div>
 
               </div>
