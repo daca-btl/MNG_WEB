@@ -25,6 +25,7 @@
 
 
 
+    <div id="lista-comprobantes-container" hx-get="{% url 'mis_comprobantes' %}" hx-select="#lista-comprobantes-container" hx-target="#lista-comprobantes-container" hx-swap="outerHTML" hx-trigger="every 15s">
     <div class="row g-3 mb-4">
         <div class="col-12 col-md-4">
             <div class="card border-0 shadow-sm rounded-4 p-3 h-100 bg-white">
@@ -275,6 +276,7 @@
         </div>
     </div>
     {% endif %}
+    </div>
 
 </div>
 {% endblock %}

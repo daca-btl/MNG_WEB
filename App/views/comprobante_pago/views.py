@@ -112,6 +112,12 @@ def admin_revisar_comprobante(request, pk):
                     )
 
                     messages.success(request, f"¡Comprobante #{comprobante.pk} actualizado como '{estado_transaccion}' correctamente!")
+                    
+                    if request.headers.get('HX-Request'):
+                        return render(request, 'admin/admin_revisar_comprobante.html', {
+                            'comprobante': comprobante,
+                            'success_msg': f"¡Comprobante #{comprobante.pk} actualizado correctamente!",
+                        })
                     return redirect('admin_comprobantes')
                 except ValidationError as ve:
                     if hasattr(ve, 'message_dict'):
