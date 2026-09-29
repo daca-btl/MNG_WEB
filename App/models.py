@@ -1022,3 +1022,4 @@ try:
     auditlog.register(Pago)
 except Exception as e:
     logger.warning("No se pudo registrar modelos en auditlog: %s", e)
+
