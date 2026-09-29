@@ -347,6 +347,28 @@ class CancelacionReservaTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(reserva, list(response.context['reservas']))
 
+    def test_reserva_aprobada_pero_activa_se_normaliza_a_cancelada(self):
+        """Si la cancelación ya fue aprobada, la reserva debe quedar en estado cancelado aunque el dato esté inconsistente."""
+        reserva = Reserva.objects.create(
+            usuario=self.turista,
+            paquete=self.paquete,
+            monto_total=Decimal('350000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='confirmada',
+            fecha_inicio=date.today() + timedelta(days=15),
+            estado_cancelacion='aprobada',
+            motivo_cancelacion='Se marcó con aprobación pero quedó activa'
+        )
+
+        self.client.force_login(self.turista)
+        response = self.client.get(reverse('mis_reservas_usuario'))
+
+        reserva.refresh_from_db()
+        self.assertEqual(reserva.estado_reserva, 'cancelada')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(reserva, list(response.context['reservas']))
+
     def test_mis_cancelaciones_muestra_solo_pendientes_o_aprobadas(self):
         """Solo deben aparecer en el historial de cancelaciones las solicitudes pendientes o aprobadas."""
         aprobada = Reserva.objects.create(
