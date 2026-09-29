@@ -16,9 +16,6 @@ from django.contrib.auth.models import AbstractUser
 
 
 class PositiveTinyIntegerField(models.PositiveSmallIntegerField):
-    def get_internal_type(self):
-        return 'PositiveTinyIntegerField'
-
     def db_type(self, connection):
         if connection.settings_dict['ENGINE'] == 'django.db.backends.mysql':
             return 'tinyint unsigned'

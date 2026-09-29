@@ -1,11 +1,20 @@
 import os
 from pathlib import Path
 
+# Cargar variables de entorno usando django-environ o python-dotenv
 try:
-    from dotenv import load_dotenv
-    load_dotenv()
+    import environ
+    env = environ.Env()
+    env_file = Path(__file__).resolve().parent.parent / '.env'
+    if env_file.exists():
+        environ.Env.read_env(str(env_file))
 except ImportError:
-    pass
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -69,15 +78,27 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# Configuración de Base de Datos (PostgreSQL si está configurado en .env, SQLite como respaldo local)
+DB_NAME = os.environ.get('DB_NAME')
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if DB_NAME:
+    DATABASES = {
+        'default': {
+            'ENGINE': os.environ.get('DB_ENGINE', 'django.db.backends.postgresql'),
+            'NAME': DB_NAME,
+            'USER': os.environ.get('DB_USER', 'postgres'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

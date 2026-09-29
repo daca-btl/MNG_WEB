@@ -108,12 +108,19 @@
             </div>
 
             <!-- Review Action Card -->
-            <div class="card border-0 shadow rounded-4 p-4 bg-white">
+            <div class="card border-0 shadow rounded-4 p-4 bg-white" id="review-action-card">
                 <span class="fw-bold text-secondary text-uppercase small mb-4 d-block u-style-e2eb0d8e">
                     <i class="bi bi-shield-check text-primary me-2"></i>Tomar Decisión
                 </span>
 
-                <form method="POST">
+                {% if success_msg %}
+                <div class="alert alert-success shadow-sm mb-3 rounded-4">
+                    <i class="bi bi-check-circle-fill me-1"></i> {{ success_msg }}
+                    <a href="{% url 'admin_comprobantes' %}" class="btn btn-sm btn-outline-success mt-2 d-block">Volver a la lista</a>
+                </div>
+                {% endif %}
+
+                <form hx-post="{% url 'admin_revisar_comprobante' comprobante.pk %}" hx-target="#review-action-card" hx-swap="outerHTML">
                     {% csrf_token %}
                     
                     <!-- Errores Globales -->
