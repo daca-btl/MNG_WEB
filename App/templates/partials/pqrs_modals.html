@@ -1,105 +1,62 @@
 <div class="modal fade" id="modalContestar{{ pqr.id }}" tabindex="-1" aria-labelledby="label{{ pqr.id }}" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <!-- Modal Header -->
-            <div class="modal-header bg-success text-white py-3 px-4">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="rounded-circle bg-white text-success d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                        <i class="bi bi-chat-dots-fill fs-5"></i>
-                    </div>
-                    <div>
-                        <h5 class="modal-title fw-bold mb-0 text-white" id="label{{ pqr.id }}">
-                            Hilo de Conversación — {{ pqr.radicado|default:pqr.asunto }}
-                        </h5>
-                        <small class="text-light opacity-85">
-                            Solicitante: <strong>{{ pqr.solicitante_display }}</strong> ({{ pqr.correo_display }})
-                        </small>
-                    </div>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form method="POST" action="{% url 'contestar_pqrs' pqr.id %}">
+                {% csrf_token %}
+                <div class="modal-header bg-success text-white rounded-top-4">
+                    <h5 class="modal-title fw-bold" id="label{{ pqr.id }}">
+                        <i class="bi bi-reply-fill me-2"></i>Responder a {{ pqr.cliente.usuario.first_name }} {{ pqr.cliente.usuario.last_name }}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <button type="button" 
-                            class="btn btn-sm btn-outline-light rounded-circle shadow-sm"
-                            title="Recargar conversación"
-                            hx-get="{% url 'hilo_pqrs' pqr.id %}"
-                            hx-target="#hilo-chat-{{ pqr.id }}"
-                            hx-swap="innerHTML">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-            </div>
-            
-            <!-- Modal Body: Chat History -->
-            <div class="modal-body p-3 p-md-4 bg-body-tertiary">
-                <!-- Resumen de Solicitud -->
-                <div class="p-3 bg-white rounded-4 mb-3 border shadow-sm">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1.5 fw-bold">
-                            <i class="bi bi-tag-fill me-1"></i>{{ pqr.tipo|upper }}
-                        </span>
-                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-1.5 small">
-                            <i class="bi bi-clock-history me-1"></i>Radicado: {{ pqr.fecha|date:"d/m/Y H:i" }}
-                        </span>
-                    </div>
-                    <h6 class="fw-bold text-dark mb-1">{{ pqr.asunto }}</h6>
-                </div>
-
-                <!-- Contenedor del Chat (Hilo con scroll) -->
-                <div id="hilo-chat-{{ pqr.id }}" 
-                     class="chat-scroll-bottom p-3 bg-light rounded-4 border shadow-inner mb-3" 
-                     style="height: 320px; max-height: 320px; overflow-y: auto; scroll-behavior: smooth;">
-                    {% include 'admin/pqrs/partials/hilo_chat.html' %}
-                </div>
-
-                <!-- Formulario Inline HTMX para Enviar Respuesta -->
-                <form hx-post="{% url 'contestar_pqrs' pqr.id %}"
-                      hx-target="#hilo-chat-{{ pqr.id }}"
-                      hx-swap="innerHTML"
-                      hx-indicator="#loading-pqrs-{{ pqr.id }}"
-                      hx-on::after-request="this.reset(); const cb = document.querySelector('#hilo-chat-{{ pqr.id }}'); if(cb) { cb.scrollTop = cb.scrollHeight; }"
-                      class="bg-white p-3 rounded-4 border shadow-sm">
-                    {% csrf_token %}
+                
+                <div class="modal-body p-4">
                     
-                    <div class="row g-2 mb-2 align-items-center">
-                        <div class="col-sm-6">
-                            <label class="form-label small fw-bold text-secondary mb-1">
-                                <i class="bi bi-arrow-repeat me-1"></i>Estado de la PQRS:
-                            </label>
-                            <select name="estado" class="form-select form-select-sm rounded-pill fw-semibold">
-                                <option value="abierto" {% if pqr.estado == 'abierto' %}selected{% endif %}>🟢 Abierto</option>
-                                <option value="en_proceso" {% if pqr.estado == 'en_proceso' %}selected{% endif %}>🟡 En Proceso</option>
-                                <option value="cerrado" {% if pqr.estado == 'cerrado' %}selected{% endif %}>⚪ Cerrado</option>
-                            </select>
-                        </div>
-                        <div class="col-sm-6 text-sm-end">
-                            <div id="loading-pqrs-{{ pqr.id }}" class="htmx-indicator spinner-border spinner-border-sm text-success" role="status">
-                                <span class="visually-hidden">Enviando mensaje...</span>
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <p class="mb-1"><strong>Asunto:</strong> {{ pqr.asunto }}</p>
+                        <p class="mb-0 text-muted small"><strong>Descripción original:</strong> {{ pqr.descripcion }}</p>
+                    </div>
+
+                    
+                    <h6 class="fw-bold text-success mb-2">
+                        <i class="bi bi-clock-history me-1"></i> Historial de respuestas registradas:
+                    </h6>
+                    <div class="mb-3 p-3 bg-light rounded-3 border" style="max-height: 180px; overflow-y: auto;">
+                        {% for item in pqr.seguimientos.all %}
+                            <div class="border-bottom pb-2 mb-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="fw-bold text-dark"><i class="bi bi-person-badge me-1"></i> {{ item.usuario.first_name|default:"Administrador" }}</small>
+                                    <small class="text-muted fs-7">{{ item.fecha_respuesta|date:"d/m/Y h:i A" }}</small>
+                                </div>
+                                <p class="mb-0 text-secondary small mt-1">{{ item.respuesta }}</p>
                             </div>
-                        </div>
+                        {% empty %}
+                            <p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i> No hay respuestas previas en el historial.</p>
+                        {% endfor %}
                     </div>
 
-                    <div class="input-group">
-                        <textarea name="respuesta" 
-                                  class="form-control border-end-0 rounded-start-4 p-2.5" 
-                                  rows="2" 
-                                  required 
-                                  placeholder="Escribe tu respuesta al usuario aquí..." 
-                                  style="resize: none;"></textarea>
-                        <button type="submit" class="btn btn-success px-4 rounded-end-4 fw-bold shadow-sm d-flex align-items-center gap-1">
-                            <i class="bi bi-send-fill"></i>
-                            <span class="d-none d-sm-inline">Enviar</span>
-                        </button>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nueva Respuesta / Seguimiento:</label>
+                        <textarea name="respuesta" class="form-control" rows="4" required placeholder="Escribe aquí la nueva respuesta para agregar al historial..."></textarea>
                     </div>
-                </form>
-            </div>
 
-            <!-- Modal Footer -->
-            <div class="modal-footer bg-white border-top py-2 px-4 justify-content-between">
-                <small class="text-muted"><i class="bi bi-shield-lock-fill text-success me-1"></i>Mensajería Segura Monagua</small>
-                <button type="button" class="btn btn-outline-secondary rounded-pill px-4 btn-sm fw-semibold" data-bs-dismiss="modal">
-                    Cerrar
-                </button>
-            </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Actualizar Estado de la Solicitud:</label>
+                        <select name="estado" class="form-select">
+                            <option value="en_proceso" {% if pqr.estado == 'en_proceso' %}selected{% endif %}>En Proceso</option>
+                            <option value="cerrado" {% if pqr.estado == 'cerrado' %}selected{% endif %}>Cerrado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light rounded-bottom-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn u-style-ffd7384b btn-success rounded-pill px-4 fw-bold">
+                        <i class="bi bi-send-fill me-1"></i> Guardar respuesta
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
