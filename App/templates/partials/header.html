@@ -105,14 +105,14 @@
       </a>
       {% endif %}
 
-      <!-- Carrito (solo para turistas/clientes) -->
+      <!-- Mis Reservas (solo para turistas/clientes) -->
       {% if not user.is_authenticated or user.rol != 'ADMIN' %}
       <a
         class="btn btn-link text-dark p-2 position-relative shadow-none"
-        href="{% url 'carrito' %}"
-        aria-label="Ver carrito de reservas"
+        href="{% url 'mis_reservas_usuario' %}"
+        aria-label="Ver mis reservas"
       >
-        <i class="bi bi-cart3 fs-5" aria-hidden="true"></i>
+        <i class="bi bi-calendar-check fs-5" aria-hidden="true"></i>
       </a>
       {% endif %}
 

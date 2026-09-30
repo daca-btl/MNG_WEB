@@ -421,11 +421,7 @@ def reservas_view(request):
 @login_required(login_url='login')
 @solo_turistas_requerido
 def carrito_view(request):
-    reservas_pendientes = Reserva.objects.filter(usuario=request.user, estado_reserva__in=['pendiente', 'Pendiente']).select_related('paquete').order_by('-id')
-    context = {
-        'reservas': reservas_pendientes
-    }
-    return render(request, 'usuario/reserva/carrito.html', context)
+    return redirect('mis_reservas_usuario')
 
 
 @login_required(login_url='login')
@@ -442,25 +438,25 @@ def comprobante_reserva_html(request, reserva_id):
 @solo_turistas_requerido
 def comprobante_multiple(request):
     if request.method != 'POST':
-        return redirect('carrito')
+        return redirect('mis_reservas_usuario')
 
     ids = request.POST.getlist('reservas')
     if not ids:
         messages.error(request, 'Debes seleccionar al menos una reserva para continuar.')
-        return redirect('carrito')
+        return redirect('mis_reservas_usuario')
 
     try:
         ids_int = [int(i) for i in ids]
     except ValueError:
         messages.error(request, 'Selección de reservas inválida.')
-        return redirect('carrito')
+        return redirect('mis_reservas_usuario')
 
     reservas_qs = Reserva.objects.filter(id__in=ids_int, usuario=request.user).select_related('paquete')
     reservas = list(reservas_qs)
 
     if not reservas:
         messages.error(request, 'No se encontraron reservas asociadas a tu usuario.')
-        return redirect('carrito')
+        return redirect('mis_reservas_usuario')
 
     total = sum((r.monto_total or 0) for r in reservas)
 
