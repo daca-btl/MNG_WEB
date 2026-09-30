@@ -3,19 +3,35 @@
 
 {% block titulo %}Mis PQRS | Monagua{% endblock %}
 
+{% block extra_head %}
+<style>
+    .chat-scroll-bottom::-webkit-scrollbar {
+        width: 6px;
+    }
+    .chat-scroll-bottom::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .chat-scroll-bottom::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid bg-body-tertiary min-vh-100 py-4">
     <div class="container">
 
         <!-- ENCABEZADO -->
-        <div class="bg-white p-4 rounded-4 border shadow-sm mb-4 d-flex justify-content-between align-items-center">
+        <div class="bg-white p-4 rounded-4 border shadow-sm mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div class="d-flex align-items-center gap-3">
                 <div class="p-2 border rounded-3 text-dark bg-light d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
-                    <i class="bi bi-inbox fs-3"></i>
+                    <i class="bi bi-inbox fs-3 text-success"></i>
                 </div>
                 <div>
-                    <h3 class="fw-bold text-dark mb-0">Mis Solicitudes</h3>
-                    <p class="text-muted mb-0 small">Consulta y realiza seguimiento a tus solicitudes en Mongua</p>
+                    <h3 class="fw-bold text-dark mb-0">Mis Solicitudes y Chat de Soporte</h3>
+                    <p class="text-muted mb-0 small">Consulta, responde y realiza seguimiento a tus PQRS en tiempo real</p>
                 </div>
             </div>
             {% if solicitudes %}
@@ -33,14 +49,11 @@
             <div class="card-header bg-white border-0 p-4 pb-2">
                 <div class="row align-items-center g-3">
                     <div class="col">
-                        <h4 class="fw-bold text-dark mb-2">
-                            <i class="me-2" style="color: var(--verde-main, #2c6e3c);"></i>{{ pqr.asunto }}
-                        </h4>
-                        <div class="d-flex flex-wrap gap-2">
-                            <span class="badge text-bg-light border"><i class="bi bi-tag-fill me-1" style="color: var(--verde-main, #2c6e3c);"></i>{{ pqr.tipo }}</span>
-                            <span class="badge text-bg-light border"><i class="bi bi-calendar3 me-1" style="color: var(--verde-main, #2c6e3c);"></i>{{ pqr.fecha|date:"d/m/Y" }}</span>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-primary rounded-pill px-2.5 py-1">{{ pqr.radicado|default:"Sin radicado" }}</span>
+                            <span class="badge text-bg-light border"><i class="bi bi-tag-fill me-1" style="color: var(--verde-main, #2c6e3c);"></i>{{ pqr.tipo|title }}</span>
+                            <span class="badge text-bg-light border"><i class="bi bi-calendar3 me-1" style="color: var(--verde-main, #2c6e3c);"></i>{{ pqr.fecha|date:"d/m/Y H:i" }}</span>
                             
-                      
                             {% for s in pqr.seguimientos.all %}
                                 {% if s.reserva %}
                                     <span class="badge text-bg-light border">
@@ -49,118 +62,92 @@
                                 {% endif %}
                             {% endfor %}
                         </div>
+                        <h4 class="fw-bold text-dark mb-0">
+                            {{ pqr.asunto }}
+                        </h4>
                     </div>
 
-                    <!-- ESTADO BADGE -->
-                    <div class="col-auto">
+                    <!-- ESTADO BADGE Y BOTÓN DE RECARGA -->
+                    <div class="col-auto d-flex align-items-center gap-2">
+                        <button type="button" 
+                                class="btn btn-sm btn-outline-secondary rounded-circle shadow-sm"
+                                title="Actualizar hilo"
+                                hx-get="{% url 'hilo_pqrs' pqr.id %}"
+                                hx-target="#hilo-chat-{{ pqr.id }}"
+                                hx-swap="innerHTML">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
                         {% if pqr.estado == 'cerrado' %}
                             <span class="badge rounded-pill px-3 py-2 border text-success bg-light">
-                                <i class="bi bi-check-circle-fill me-1"></i> {{ pqr.get_estado_display }}
+                                <i class="bi bi-check-circle-fill me-1"></i> Cerrada
+                            </span>
+                        {% elif pqr.estado == 'en_proceso' %}
+                            <span class="badge rounded-pill px-3 py-2 border text-warning bg-light">
+                                <i class="bi bi-hourglass-split me-1"></i> En Proceso
                             </span>
                         {% else %}
-                            <span class="badge rounded-pill px-3 py-2 border text-dark bg-light">
-                                <i class="bi bi-clock-fill me-1" style="color: var(--verde-main, #2c6e3c);"></i> {{ pqr.get_estado_display }}
+                            <span class="badge rounded-pill px-3 py-2 border text-primary bg-light">
+                                <i class="bi bi-clock-fill me-1"></i> Abierta / En Revisión
                             </span>
                         {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- CONTENIDO DE MENSAJE Y RESPUESTA -->
+            <!-- CUERPO DE LA TARJETA: CHAT Y RESPUESTAS -->
             <div class="card-body p-4 pt-2">
-                <div class="row g-4">
-                    <!-- TU MENSAJE -->
-                    <div class="col-lg-6">
-                        <div class="card h-100 border rounded-4 bg-light shadow-none">
-                            <div class="card-header border-bottom bg-transparent p-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="background-color: var(--verde-main, #2c6e3c); width:32px; height:32px;">
-                                        <i class="bi bi-person-fill"></i>
-                                    </div>
-                                    <div>
-                                        <h6 class="fw-bold mb-0 text-dark">Tu mensaje</h6>
-                                        <small class="text-secondary">Solicitud enviada</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-body p-3">
-                                <!-- MOSTRAR DETALLE DE RESERVA VINCULADA -->
-                                {% for s in pqr.seguimientos.all %}
-                                    {% if s.reserva %}
-                                        <div class="p-2 mb-3 bg-white rounded-3 border d-flex align-items-center gap-2">
-                                            <i class="bi bi-ticket-perforated-fill fs-5" style="color: var(--verde-main, #2c6e3c);"></i>
-                                            <div>
-                                                <span class="d-block text-secondary" style="font-size: 0.75rem;">Reserva vinculada:</span>
-                                                <strong class="text-dark small">paquete {{ s.reserva.paquete }}</strong>
-                                            </div>
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-
-                                <p class="text-dark mb-3" style="white-space: pre-line;">{{ pqr.descripcion }}</p>
-                                <small class="text-secondary"><i class="bi bi-calendar-event me-1"></i> {{ pqr.fecha|date:"d/m/Y - H:i" }}</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- RESPUESTA DE ATENCIÓN AL CLIENTE -->
-                    <div class="col-lg-6">
-                        {% if pqr.estado == 'cerrado' %}
-                        <div class="card h-100 border rounded-4 bg-light shadow-none">
-                            <div class="card-header border-bottom bg-transparent p-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="background-color: var(--verde-oscuro, #005215); width:32px; height:32px;">
-                                        <i class="bi bi-headset"></i>
-                                    </div>
-                                    <div>
-                                        <h6 class="fw-bold mb-0 text-dark">Respuesta de Monagua</h6>
-                                        <small class="text-secondary">Atención al cliente</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-body p-3 d-flex flex-column justify-content-between">
-                                {% for h in pqr.seguimientos.all %}
-                                    {% if h.respuesta %}
-                                        <p class="text-dark fw-medium mb-3" style="white-space: pre-line;">{{ h.respuesta }}</p>
-                                        <div class="p-2 rounded bg-white border d-flex align-items-center mb-0">
-                                            <i class="bi bi-check-circle-fill me-2" style="color: var(--verde-main, #2c6e3c);"></i>
-                                            <small class="fw-bold text-dark">Atendido el {{ h.fecha_respuesta|date:"d/m/Y - H:i" }}</small>
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% else %}
-                        <!-- SOLICITUD EN REVISIÓN -->
-                        <div class="card h-100 border rounded-4 bg-light shadow-none">
-                            <div class="card-header border-bottom bg-transparent p-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="background-color: var(--verde-main, #2c6e3c); width:32px; height:32px;">
-                                        <i class="bi bi-hourglass-split"></i>
-                                    </div>
-                                    <div>
-                                        <h6 class="fw-bold mb-0 text-dark">Solicitud en revisión</h6>
-                                        <small class="text-secondary">Estamos trabajando en tu solicitud</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-body p-3 d-flex align-items-center">
-                                <div class="text-center w-100 py-3">
-                                    <i class="bi bi-clock-history fs-1 text-muted"></i>
-                                    <h6 class="fw-bold mt-2 text-dark">Estamos revisando tu solicitud</h6>
-                                    <p class="text-secondary small mb-0">Nuestro equipo analizará tu PQRS y te dará una respuesta próximamente.</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
+                <div class="p-3 bg-light rounded-4 border mb-3">
+                    <h6 class="fw-bold text-dark mb-2">
+                        <i class="bi bi-chat-left-text-fill text-success me-1"></i> Conversación y Respuestas de Monagua:
+                    </h6>
+                    <!-- Hilo de Chat Reactivo -->
+                    <div id="hilo-chat-{{ pqr.id }}" 
+                         class="chat-scroll-bottom p-3 bg-white rounded-4 border" 
+                         style="max-height: 320px; overflow-y: auto; scroll-behavior: smooth;">
+                        {% include 'admin/pqrs/partials/hilo_chat.html' %}
                     </div>
                 </div>
+
+                <!-- Formulario HTMX para enviar respuesta adicional si no está cerrada -->
+                {% if pqr.estado != 'cerrado' %}
+                <form hx-post="{% url 'contestar_pqrs' pqr.id %}"
+                      hx-target="#hilo-chat-{{ pqr.id }}"
+                      hx-swap="innerHTML"
+                      hx-indicator="#loading-mis-pqrs-{{ pqr.id }}"
+                      hx-on::after-request="this.reset(); const cb = document.querySelector('#hilo-chat-{{ pqr.id }}'); if(cb) { cb.scrollTop = cb.scrollHeight; }"
+                      class="mt-3">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <input type="text" 
+                               name="respuesta" 
+                               class="form-control rounded-start-pill ps-3 shadow-none border" 
+                               required 
+                               placeholder="Escribe un mensaje o aclaración para el equipo de Monagua..." 
+                               autocomplete="off">
+                        <button type="submit" class="btn text-white rounded-end-pill px-4 fw-bold d-flex align-items-center gap-1 shadow-sm" style="background-color: var(--verde-main, #2c6e3c);">
+                            <i class="bi bi-send-fill"></i>
+                            <span>Responder</span>
+                        </button>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2 px-2">
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Tu respuesta será notificada inmediatamente a los administradores.</small>
+                        <div id="loading-mis-pqrs-{{ pqr.id }}" class="htmx-indicator spinner-border spinner-border-sm text-success" role="status">
+                            <span class="visually-hidden">Enviando mensaje...</span>
+                        </div>
+                    </div>
+                </form>
+                {% else %}
+                <div class="alert alert-secondary py-2 px-3 mb-0 rounded-pill small d-flex align-items-center gap-2">
+                    <i class="bi bi-lock-fill text-muted"></i>
+                    <span>Esta solicitud se encuentra <strong>Cerrada</strong>. Si necesitas asistencia adicional, puedes abrir una nueva solicitud.</span>
+                </div>
+                {% endif %}
             </div>
 
             <!-- PIE DE TARJETA -->
             <div class="card-footer bg-white border-0 px-4 py-2">
                 <div class="d-flex justify-content-between align-items-center border-top pt-2">
-                    <small class="text-secondary"><i class="bi bi-shield-check me-1" style="color: var(--verde-main, #2c6e3c);"></i> Solicitud registrada en Monagua</small>
+                    <small class="text-secondary"><i class="bi bi-shield-check me-1" style="color: var(--verde-main, #2c6e3c);"></i> Solicitud protegida y registrada en Monagua</small>
                     <small class="fw-semibold text-muted">PQRS #{{ pqr.id }}</small>
                 </div>
             </div>
@@ -185,4 +172,27 @@
 
     </div>
 </div>
+
+<script>
+    // Auto-scroll en hilos de chat al cargar y tras swap de HTMX
+    function scrollAllChatsToBottom() {
+        document.querySelectorAll('.chat-scroll-bottom').forEach(function(el) {
+            el.scrollTop = el.scrollHeight;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', scrollAllChatsToBottom);
+
+    document.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.detail.target) {
+            const chatBoxes = evt.detail.target.querySelectorAll ? evt.detail.target.querySelectorAll('.chat-scroll-bottom') : [];
+            chatBoxes.forEach(function (box) {
+                box.scrollTop = box.scrollHeight;
+            });
+            if (evt.detail.target.classList && evt.detail.target.classList.contains('chat-scroll-bottom')) {
+                evt.detail.target.scrollTop = evt.detail.target.scrollHeight;
+            }
+        }
+    });
+</script>
 {% endblock %}

@@ -3,23 +3,41 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/datatables.min.css' %}">
+<style>
+    .chat-scroll-bottom::-webkit-scrollbar {
+        width: 6px;
+    }
+    .chat-scroll-bottom::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .chat-scroll-bottom::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+    }
+    .chat-scroll-bottom::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 {% include "partials/breadcrumbs.html" with current_title="Administración de PQRS" current_icon="bi bi-chat-square-text-fill" %}
 <div class="container-fluid py-4">
     
-    <div class="card bg-success bg-opacity-10 border-0 shadow-sm p-4 mb-4 rounded">
+    <!-- 1. Encabezado -->
+    <div class="card bg-success bg-opacity-10 border-0 shadow-sm p-4 mb-4 rounded-4">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
                 <h1 class="display-6 text-success fw-bold mb-2 d-flex align-items-center">
                     <i class="bi bi-chat-square-text-fill me-3"></i>Administración de PQRS
                 </h1>
-                <p class="text-muted mb-0">Gestiona y responde las Peticiones, Quejas, Reclamos y Sugerencias de los clientes.</p>
+                <p class="text-muted mb-0">Gestiona, filtra y responde las Peticiones, Quejas, Reclamos y Sugerencias en tiempo real.</p>
             </div>
         </div>
     </div>
 
+    <!-- 2. Tarjetas de Estadísticas -->
     <div class="row g-4 mb-4">
         {% for label, count, color in stats_list %}
         <div class="col-12 col-sm-6 col-md-4">
@@ -48,154 +66,316 @@
         {% endfor %}
     </div>
 
-    <div class="card border-0 shadow-sm p-3 mb-4 rounded-4">
-        <!-- VISTA TABLA (DESKTOP) -->
-        <div class="table-responsive d-none d-lg-block">
-            <table id="tablaPQRS" class="table table-hover align-middle mb-0 u-style-6d567387">
-                <thead class="table-light text-muted">
-                    <tr>
-                        <th scope="col" class="fw-bold ps-3">Radicado</th>
-                        <th scope="col" class="fw-bold">Solicitante</th>
-                        <th scope="col" class="fw-bold">Tipo</th>
-                        <th scope="col" class="fw-bold">Reserva</th>
-                        <th scope="col" class="fw-bold">Asunto</th>
-                        <th scope="col" class="fw-bold text-center">Acción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for pqr in todas_las_pqrs %}
-                    <tr>
-                        <td class="ps-3 fw-bold text-primary">{{ pqr.radicado|default:"N/A" }}</td>
-                        <td>
-                            {% if pqr.usuario %}
-                                <h6 class="fw-bold text-dark mb-0">{{ pqr.usuario.get_full_name|default:pqr.usuario.username }}</h6>
-                                <small class="text-muted">{{ pqr.usuario.email }}</small>
-                            {% else %}
-                                <h6 class="fw-bold text-dark mb-0">{{ pqr.nombre_completo }} <span class="badge bg-secondary ms-1">Anónimo</span></h6>
-                                <small class="text-muted">{{ pqr.correo }}</small>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if pqr.tipo == 'Queja' or pqr.tipo == 'Reclamo' %}
-                                <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill fw-bold">
-                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ pqr.tipo }}
-                                </span>
-                            {% else %}
-                                <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-bold">
-                                    <i class="bi bi-info-circle-fill me-1"></i> {{ pqr.tipo }}
-                                </span>
-                            {% endif %}
-                        </td>
-
-                        <!-- MOSTRAR RESERVA DESDE SEGUIMIENTO -->
-                        <td>
-                            {% with seguimiento=pqr.seguimientos.first %}
-                                {% if seguimiento and seguimiento.reserva %}
-                                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-bold">
-                                        <i class="bi bi-bookmark-check-fill me-1"></i> Reserva del paquete {{ seguimiento.reserva.paquete }}
-                                    </span>
-                                {% else %}
-                                    <span class="text-muted small">Sin Reserva</span>
-                                {% endif %}
-                            {% endwith %}
-                        </td>
-
-                        <td class="text-muted small" title="{{ pqr.asunto }}">
-                            {{ pqr.asunto|truncatechars:50 }}
-                        </td>
-                        <td class="text-center">
-                           {% if pqr.estado == 'cerrado' or pqr.estado == 'respondido' %}
-    <button type="button" 
-            class="btn btn-sm btn-outline-success rounded-pill px-4 fw-bold" 
-            data-bs-toggle="modal" data-bs-target="#modalContestar{{ pqr.id }}">
-        <i class="bi bi-check-all me-1"></i> Respondida
-    </button>
-{% else %}
-    <button type="button" 
-            class="btn btn-sm btn-danger shadow-sm rounded-pill px-4 fw-bold" 
-            data-bs-toggle="modal" data-bs-target="#modalContestar{{ pqr.id }}">
-        <i class="bi bi-reply-fill me-1"></i> Contestar
-    </button>
-{% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- VISTA TARJETAS (MÓVIL) -->
-        <div class="d-lg-none">
-            <div class="row g-3">
-                {% for pqr in todas_las_pqrs %}
-                <div class="col-12">
-                    <div class="card border border-light shadow-sm rounded-4 p-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2 border-bottom pb-2">
-                            <div>
-                                <span class="badge bg-primary mb-1">{{ pqr.radicado|default:"N/A" }}</span>
-                                {% if pqr.usuario %}
-                                    <h6 class="fw-bold text-dark mb-1">{{ pqr.usuario.get_full_name|default:pqr.usuario.username }}</h6>
-                                {% else %}
-                                    <h6 class="fw-bold text-dark mb-1">{{ pqr.nombre_completo }} <span class="badge bg-secondary ms-1">Anónimo</span></h6>
-                                {% endif %}
-                                <p class="text-muted small mb-0">{{ pqr.asunto|truncatechars:40 }}</p>
-                            </div>
-                            <div>
-                                {% if pqr.tipo == 'Queja' or pqr.tipo == 'Reclamo' %}
-                                    <span class="badge bg-danger bg-opacity-15 text-danger rounded-pill">Ans.</span>
-                                {% else %}
-                                    <span class="badge bg-success bg-opacity-15 text-success rounded-pill">Gral.</span>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <!-- MOSTRAR RESERVA EN MÓVIL -->
-                        <div class="mb-2">
-                            {% with seguimiento=pqr.seguimientos.first %}
-                                {% if seguimiento and seguimiento.reserva %}
-                                    <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-pill small fw-bold">
-                                        <i class="bi bi-bookmark-check-fill me-1"></i> Reserva #{{ seguimiento.reserva.id }}
-                                    </span>
-                                {% else %}
-                                    <span class="text-muted small">Sin Reserva</span>
-                                {% endif %}
-                            {% endwith %}
-                        </div>
-
-                        <div class="pt-2">
-                           {% if pqr.estado == 'cerrado' or pqr.estado == 'respondido' %}
-    <button type="button" 
-            class="btn btn-sm w-100 btn-outline-success rounded-pill fw-bold" 
-            data-bs-toggle="modal" data-bs-target="#modalContestar{{ pqr.id }}">
-        <i class="bi bi-check-all me-1"></i> Respondida
-    </button>
-{% else %}
-    <button type="button" 
-            class="btn btn-sm w-100 btn-danger rounded-pill fw-bold" 
-            data-bs-toggle="modal" data-bs-target="#modalContestar{{ pqr.id }}">
-        <i class="bi bi-reply-fill me-1"></i> Responder Solicitud
-    </button>
-{% endif %}
+    <!-- 3. Barra de Filtros Dinámicos con HTMX -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+        <div class="card-body p-4">
+            <form id="filtro-pqrs-form" 
+                  method="GET" 
+                  action="{% url 'listar_pqrs' %}"
+                  hx-get="{% url 'listar_pqrs' %}"
+                  hx-target="#contenedor-lista-pqrs"
+                  hx-select="#contenedor-lista-pqrs"
+                  hx-swap="outerHTML"
+                  hx-trigger="input from:input[name='q'] delay:400ms, change from:select, change from:input[type='date'], submit">
+                
+                <div class="row g-3 align-items-end">
+                    <!-- Búsqueda por texto libre -->
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small fw-bold text-muted mb-1">
+                            <i class="bi bi-search me-1"></i>Buscar Solicitud / Cliente:
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" 
+                                   name="q" 
+                                   class="form-control border-start-0 ps-0" 
+                                   placeholder="Radicado, asunto, nombre o email..." 
+                                   value="{{ q_busqueda }}" 
+                                   autocomplete="off">
                         </div>
                     </div>
+
+                    <!-- Filtro por Estado -->
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">
+                            <i class="bi bi-flag-fill me-1"></i>Estado:
+                        </label>
+                        <select name="estado" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="abierto" {% if estado_seleccionado == 'abierto' %}selected{% endif %}>🟢 Abierto</option>
+                            <option value="en_proceso" {% if estado_seleccionado == 'en_proceso' %}selected{% endif %}>🟡 En Proceso</option>
+                            <option value="cerrado" {% if estado_seleccionado == 'cerrado' %}selected{% endif %}>⚪ Cerrado</option>
+                        </select>
+                    </div>
+
+                    <!-- Filtro por Tipo -->
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">
+                            <i class="bi bi-tags-fill me-1"></i>Tipo:
+                        </label>
+                        <select name="tipo" class="form-select">
+                            <option value="">Todos los Tipos</option>
+                            <option value="peticion" {% if tipo_seleccionado == 'peticion' %}selected{% endif %}>Petición</option>
+                            <option value="queja" {% if tipo_seleccionado == 'queja' %}selected{% endif %}>Queja</option>
+                            <option value="reclamo" {% if tipo_seleccionado == 'reclamo' %}selected{% endif %}>Reclamo</option>
+                            <option value="sugerencia" {% if tipo_seleccionado == 'sugerencia' %}selected{% endif %}>Sugerencia</option>
+                        </select>
+                    </div>
+
+                    <!-- Filtro por Prioridad -->
+                    <div class="col-6 col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">
+                            <i class="bi bi-exclamation-octagon-fill me-1"></i>Prioridad:
+                        </label>
+                        <select name="prioridad" class="form-select">
+                            <option value="">Todas</option>
+                            <option value="alta" {% if prioridad_seleccionada == 'alta' %}selected{% endif %}>🔴 Alta (Quejas/Reclamos)</option>
+                            <option value="media" {% if prioridad_seleccionada == 'media' %}selected{% endif %}>🟡 Media (Peticiones)</option>
+                            <option value="baja" {% if prioridad_seleccionada == 'baja' %}selected{% endif %}>🟢 Baja (Sugerencias)</option>
+                        </select>
+                    </div>
+
+                    <!-- Acciones / Limpiar -->
+                    <div class="col-6 col-md-2 d-flex gap-2">
+                        <a href="{% url 'listar_pqrs' %}" class="btn btn-outline-secondary w-100 rounded-pill fw-semibold shadow-sm" title="Restablecer filtros">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Limpiar
+                        </a>
+                    </div>
                 </div>
-                {% empty %}
-                <div class="col-12 text-center p-4 text-muted border rounded shadow-sm bg-light">
-                    No hay PQRS registradas.
+
+                <!-- Filtro opcional por Rango de Fecha -->
+                <div class="row g-3 mt-1">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small fw-bold text-muted mb-1">
+                            <i class="bi bi-calendar-event me-1"></i>Fecha Desde:
+                        </label>
+                        <input type="date" name="fecha_desde" class="form-control form-control-sm" value="{{ fecha_desde }}">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small fw-bold text-muted mb-1">
+                            <i class="bi bi-calendar-check me-1"></i>Fecha Hasta:
+                        </label>
+                        <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="{{ fecha_hasta }}">
+                    </div>
                 </div>
-                {% endfor %}
-            </div>
+            </form>
         </div>
     </div>
-</div>
 
-{% for pqr in todas_las_pqrs %}
-    {% include 'partials/pqrs_modals.html' %}
-{% endfor %}
+    <!-- 4. Contenedor de Lista de PQRS (Reemplazable por HTMX) -->
+    <div id="contenedor-lista-pqrs">
+        <div class="card border-0 shadow-sm p-3 mb-4 rounded-4 bg-white">
+            <!-- VISTA TABLA (DESKTOP) -->
+            <div class="table-responsive d-none d-lg-block">
+                <table id="tablaPQRS" class="table table-hover align-middle mb-0 u-style-6d567387">
+                    <thead class="table-light text-muted">
+                        <tr>
+                            <th scope="col" class="fw-bold ps-3">Radicado</th>
+                            <th scope="col" class="fw-bold">Solicitante</th>
+                            <th scope="col" class="fw-bold">Tipo & Prioridad</th>
+                            <th scope="col" class="fw-bold">Reserva</th>
+                            <th scope="col" class="fw-bold">Asunto</th>
+                            <th scope="col" class="fw-bold text-center">Estado</th>
+                            <th scope="col" class="fw-bold text-center">Chat / Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pqr in todas_las_pqrs %}
+                        <tr>
+                            <td class="ps-3 fw-bold text-primary">
+                                <span>{{ pqr.radicado|default:"N/A" }}</span>
+                                <div class="text-muted small" style="font-size: 0.75rem;">
+                                    <i class="bi bi-calendar3 me-1"></i>{{ pqr.fecha|date:"d/m/Y H:i" }}
+                                </div>
+                            </td>
+                            <td>
+                                {% if pqr.usuario %}
+                                    <h6 class="fw-bold text-dark mb-0">{{ pqr.usuario.get_full_name|default:pqr.usuario.username }}</h6>
+                                    <small class="text-muted">{{ pqr.usuario.email }}</small>
+                                {% else %}
+                                    <h6 class="fw-bold text-dark mb-0">{{ pqr.nombre_completo }} <span class="badge bg-secondary ms-1">Anónimo</span></h6>
+                                    <small class="text-muted">{{ pqr.correo }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pqr.tipo|lower == 'queja' or pqr.tipo|lower == 'reclamo' %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill fw-bold">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ pqr.tipo|title }} (Alta)
+                                    </span>
+                                {% elif pqr.tipo|lower == 'peticion' or pqr.tipo|lower == 'petición' %}
+                                    <span class="badge bg-warning bg-opacity-15 text-dark px-3 py-2 rounded-pill fw-bold">
+                                        <i class="bi bi-info-circle-fill me-1"></i> {{ pqr.tipo|title }} (Media)
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-bold">
+                                        <i class="bi bi-chat-heart-fill me-1"></i> {{ pqr.tipo|title }} (Baja)
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- MOSTRAR RESERVA DESDE SEGUIMIENTO -->
+                            <td>
+                                {% with seguimiento=pqr.seguimientos.first %}
+                                    {% if seguimiento and seguimiento.reserva %}
+                                        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-bold">
+                                            <i class="bi bi-bookmark-check-fill me-1"></i> Reserva #{{ seguimiento.reserva.id }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted small">Sin Reserva</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+
+                            <td class="text-muted small" title="{{ pqr.asunto }}">
+                                <strong class="text-dark d-block">{{ pqr.asunto|truncatechars:45 }}</strong>
+                                <span>{{ pqr.descripcion|truncatechars:45 }}</span>
+                            </td>
+
+                            <td class="text-center">
+                                {% if pqr.estado == 'cerrado' %}
+                                    <span class="badge bg-secondary text-white px-3 py-2 rounded-pill shadow-sm">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Cerrado
+                                    </span>
+                                {% elif pqr.estado == 'en_proceso' %}
+                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm">
+                                        <i class="bi bi-hourglass-split me-1"></i> En Proceso
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-success text-white px-3 py-2 rounded-pill shadow-sm">
+                                        <i class="bi bi-envelope-open-fill me-1"></i> Abierto
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <td class="text-center">
+                                <button type="button" 
+                                        class="btn btn-sm {% if pqr.estado == 'cerrado' %}btn-outline-success{% else %}btn-success{% endif %} shadow-sm rounded-pill px-3.5 py-1.5 fw-bold d-inline-flex align-items-center gap-1" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#modalContestar{{ pqr.id }}"
+                                        hx-get="{% url 'hilo_pqrs' pqr.id %}"
+                                        hx-target="#hilo-chat-{{ pqr.id }}"
+                                        hx-swap="innerHTML">
+                                    <i class="bi bi-chat-dots-fill"></i>
+                                    <span>{% if pqr.estado == 'cerrado' %}Ver Hilo{% else %}Atender Chat{% endif %}</span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                                <h6 class="fw-bold">No se encontraron solicitudes PQRS</h6>
+                                <p class="small mb-0">Intenta ajustando los filtros de búsqueda.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- VISTA TARJETAS (MÓVIL) -->
+            <div class="d-lg-none">
+                <div class="row g-3">
+                    {% for pqr in todas_las_pqrs %}
+                    <div class="col-12">
+                        <div class="card border border-light shadow-sm rounded-4 p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2 border-bottom pb-2">
+                                <div>
+                                    <span class="badge bg-primary mb-1">{{ pqr.radicado|default:"N/A" }}</span>
+                                    {% if pqr.usuario %}
+                                        <h6 class="fw-bold text-dark mb-1">{{ pqr.usuario.get_full_name|default:pqr.usuario.username }}</h6>
+                                    {% else %}
+                                        <h6 class="fw-bold text-dark mb-1">{{ pqr.nombre_completo }} <span class="badge bg-secondary ms-1">Anónimo</span></h6>
+                                    {% endif %}
+                                    <p class="text-muted small mb-0">{{ pqr.asunto|truncatechars:40 }}</p>
+                                </div>
+                                <div>
+                                    {% if pqr.tipo|lower == 'queja' or pqr.tipo|lower == 'reclamo' %}
+                                        <span class="badge bg-danger bg-opacity-15 text-danger rounded-pill">Alta</span>
+                                    {% else %}
+                                        <span class="badge bg-success bg-opacity-15 text-success rounded-pill">Normal</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="mb-2 d-flex justify-content-between align-items-center">
+                                <div>
+                                    {% with seguimiento=pqr.seguimientos.first %}
+                                        {% if seguimiento and seguimiento.reserva %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-pill small fw-bold">
+                                                <i class="bi bi-bookmark-check-fill me-1"></i> Reserva #{{ seguimiento.reserva.id }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted small">Sin Reserva</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
+                                <div>
+                                    {% if pqr.estado == 'cerrado' %}
+                                        <span class="badge bg-secondary rounded-pill small">Cerrado</span>
+                                    {% elif pqr.estado == 'en_proceso' %}
+                                        <span class="badge bg-warning text-dark rounded-pill small">En Proceso</span>
+                                    {% else %}
+                                        <span class="badge bg-success rounded-pill small">Abierto</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                <button type="button" 
+                                        class="btn btn-sm w-100 {% if pqr.estado == 'cerrado' %}btn-outline-success{% else %}btn-success{% endif %} rounded-pill fw-bold" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#modalContestar{{ pqr.id }}"
+                                        hx-get="{% url 'hilo_pqrs' pqr.id %}"
+                                        hx-target="#hilo-chat-{{ pqr.id }}"
+                                        hx-swap="innerHTML">
+                                    <i class="bi bi-chat-dots-fill me-1"></i> Abrir Hilo de Chat
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12 text-center p-4 text-muted border rounded-4 shadow-sm bg-light">
+                        No hay PQRS registradas con los filtros actuales.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Modales de Chat Inline -->
+        {% for pqr in todas_las_pqrs %}
+            {% include 'partials/pqrs_modals.html' %}
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <link class="styles" rel="stylesheet" href="{% static 'css/datatables.css' %}">
 <script src="{% static 'js/tconf/tconf-tablaPQRS.js' %}"></script>
+
+<script>
+    // Handler afterSwap para auto-scroll del chat en HTMX
+    document.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.detail.target) {
+            const chatBoxes = evt.detail.target.querySelectorAll ? evt.detail.target.querySelectorAll('.chat-scroll-bottom') : [];
+            chatBoxes.forEach(function (box) {
+                box.scrollTop = box.scrollHeight;
+            });
+            if (evt.detail.target.classList && evt.detail.target.classList.contains('chat-scroll-bottom')) {
+                evt.detail.target.scrollTop = evt.detail.target.scrollHeight;
+            }
+        }
+    });
+
+    // Auto-scroll al abrir cualquier modal de chat
+    document.addEventListener('shown.bs.modal', function (event) {
+        const modal = event.target;
+        const chatBox = modal.querySelector('.chat-scroll-bottom');
+        if (chatBox) {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    });
+</script>
 {% endblock %}

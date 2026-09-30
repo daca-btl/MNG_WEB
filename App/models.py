@@ -635,6 +635,26 @@ class PQRS(models.Model):
     class Meta:
         verbose_name_plural = 'PQRS'
 
+    @property
+    def prioridad(self):
+        if self.tipo in ['queja', 'reclamo', 'Queja', 'Reclamo']:
+            return 'alta'
+        elif self.tipo in ['peticion', 'Petición', 'petición']:
+            return 'media'
+        return 'baja'
+
+    @property
+    def solicitante_display(self):
+        if self.usuario:
+            return self.usuario.get_full_name() or self.usuario.username
+        return self.nombre_completo or "Anónimo"
+
+    @property
+    def correo_display(self):
+        if self.usuario:
+            return self.usuario.email
+        return self.correo or "Sin correo"
+
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         super().save(*args, **kwargs)
@@ -648,7 +668,7 @@ class PQRS(models.Model):
         return f'{self.radicado} - {self.asunto}'
 
 # ==============================================================================
-# SEGUIMIENTO
+# SEGUIMIENTO (MENSAJES POR HILO PQRS)
 # ==============================================================================
 
 class Seguimiento(models.Model):
@@ -666,6 +686,20 @@ class Seguimiento(models.Model):
         ordering = ['fecha_respuesta']
         verbose_name = 'Seguimiento'
         verbose_name_plural = 'Seguimientos'
+
+    @property
+    def es_admin(self):
+        if not self.usuario:
+            return False
+        return getattr(self.usuario, 'is_staff', False) or getattr(self.usuario, 'es_admin', False) or getattr(self.usuario, 'rol', None) == 1
+
+    @property
+    def autor_display(self):
+        if self.usuario:
+            if self.es_admin:
+                return f"{self.usuario.first_name or self.usuario.username} (Equipo Monagua)"
+            return self.usuario.get_full_name() or self.usuario.username
+        return self.pqrs.solicitante_display if hasattr(self.pqrs, 'solicitante_display') else (self.pqrs.nombre_completo or "Usuario")
 
     def __str__(self):
         return f'Seguimiento de {self.pqrs} - {self.fecha_respuesta.strftime("%Y-%m-%d %H:%M:%S")}'

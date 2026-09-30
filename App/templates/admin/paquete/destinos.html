@@ -109,6 +109,7 @@
     }
 </style>
 
+<script src="{% static 'js/htmx.min.js' %}"></script>
 <section class="container" style="margin-top: -4rem; position: relative; z-index: 10;" data-aos="fade-up" data-aos-duration="800">
     <div class="bg-white p-4 p-md-5 rounded-4 shadow-lg border border-light search-card-float">
         <div class="text-center mb-4" data-aos="fade-up" data-aos-delay="100">
@@ -116,7 +117,12 @@
             <p class="text-muted">Encuentra el tour perfecto en Mongua.</p>
         </div>
         
-      <form method="GET" action="{% url 'tours' %}" class="mx-auto" style="max-width: 900px;" data-aos="fade-up" data-aos-delay="200">
+      <form method="GET" action="{% url 'tours' %}" class="mx-auto" style="max-width: 900px;" data-aos="fade-up" data-aos-delay="200"
+            hx-get="{% url 'tours' %}"
+            hx-target="#contenedor-tours"
+            hx-select="#contenedor-tours"
+            hx-swap="outerHTML"
+            hx-trigger="input from:input[name='q'] delay:500ms, input from:input[name='precio_max'] delay:500ms, change from:select, submit">
     <div class="row g-3">
         <div class="col-md-5">
             <div class="input-group input-group-lg shadow-sm">
@@ -161,7 +167,7 @@
         <div class="col-md-9"> 
             <div class="input-group input-group-lg shadow-sm">
                 <span class="input-group-text bg-white text-muted fs-5"><i class="bi bi-people-fill"></i></span>
-                <select name="apto_menores" class="form-select fw-semibold text-dark fs-5" onchange="this.form.submit()" style="cursor: pointer;">
+                <select name="apto_menores" class="form-select fw-semibold text-dark fs-5" style="cursor: pointer;">
                     <option value="" class="fw-normal text-muted">¿Viajas con menores? (Mostrar todos los planes)</option>
                     <option value="si" {% if request.GET.apto_menores == 'si' %}selected{% endif %} class="text-success">¡Sí! Solo tours aptos para menores</option>
                     <option value="no" {% if request.GET.apto_menores == 'no' %}selected{% endif %}>Solo adultos / No aptos para menores</option>
@@ -174,7 +180,7 @@
         <div class="col-md-9"> 
             <div class="input-group input-group-lg shadow-sm">
                 <span class="input-group-text bg-white text-muted fs-5"><i class="bi bi-stars"></i></span>
-                <select name="categoria" class="form-select fw-semibold text-dark fs-5" onchange="this.form.submit()" style="cursor: pointer;">
+                <select name="categoria" class="form-select fw-semibold text-dark fs-5" style="cursor: pointer;">
                     <option value="" class="fw-normal text-muted">Filtrar por categoría (Mostrar todos los planes)</option>
                     {% for cat in categorias %}
                         <option value="{{ cat.id }}" {% if request.GET.categoria == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.nombre }}</option>

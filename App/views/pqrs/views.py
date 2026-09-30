@@ -45,35 +45,93 @@ class PQRSListView(ListView):
     context_object_name = 'todas_las_pqrs'
 
     def get_queryset(self):
-        return PQRS.objects.all().prefetch_related('seguimientos__reserva').order_by('-fecha')
+        queryset = PQRS.objects.all().prefetch_related('seguimientos__reserva', 'usuario').order_by('-fecha')
+        
+        # Filtro de búsqueda textual (Radicado, Asunto, Descripción, Solicitante)
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            queryset = queryset.filter(
+                Q(radicado__icontains=q) |
+                Q(asunto__icontains=q) |
+                Q(descripcion__icontains=q) |
+                Q(nombre_completo__icontains=q) |
+                Q(correo__icontains=q) |
+                Q(usuario__first_name__icontains=q) |
+                Q(usuario__last_name__icontains=q) |
+                Q(usuario__username__icontains=q) |
+                Q(usuario__email__icontains=q)
+            )
+
+        # Filtro por estado
+        estado = self.request.GET.get('estado', '').strip()
+        if estado:
+            queryset = queryset.filter(estado=estado)
+
+        # Filtro por tipo
+        tipo = self.request.GET.get('tipo', '').strip()
+        if tipo:
+            queryset = queryset.filter(tipo__iexact=tipo)
+
+        # Filtro por prioridad
+        prioridad = self.request.GET.get('prioridad', '').strip().lower()
+        if prioridad == 'alta':
+            queryset = queryset.filter(tipo__in=['queja', 'reclamo', 'Queja', 'Reclamo'])
+        elif prioridad == 'media':
+            queryset = queryset.filter(tipo__in=['peticion', 'Petición', 'petición'])
+        elif prioridad == 'baja':
+            queryset = queryset.filter(tipo__in=['sugerencia', 'Sugerencia'])
+
+        # Filtro por rango de fechas
+        fecha_desde = self.request.GET.get('fecha_desde', '').strip()
+        if fecha_desde:
+            try:
+                queryset = queryset.filter(fecha__date__gte=fecha_desde)
+            except Exception:
+                pass
+
+        fecha_hasta = self.request.GET.get('fecha_hasta', '').strip()
+        if fecha_hasta:
+            try:
+                queryset = queryset.filter(fecha__date__lte=fecha_hasta)
+            except Exception:
+                pass
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         stats = PQRS.objects.aggregate(
             total=Count('id'),
-            respondidas=Count('id', filter=Q(seguimientos__isnull=False)),
-            pendientes=Count('id', filter=Q(seguimientos__isnull=True))
+            respondidas=Count('id', filter=Q(estado='cerrado')),
+            pendientes=Count('id', filter=Q(estado__in=['abierto', 'en_proceso']))
         )
         context['stats_list'] = [
             ('Total PQRS', stats['total'], 'text-dark'),
-            ('Respondidas', stats['respondidas'], 'text-success'),
-            ('Pendientes', stats['pendientes'], 'text-danger'),
+            ('Respondidas / Cerradas', stats['respondidas'], 'text-success'),
+            ('Pendientes / En Proceso', stats['pendientes'], 'text-danger'),
         ]
+        context['estado_seleccionado'] = self.request.GET.get('estado', '')
+        context['tipo_seleccionado'] = self.request.GET.get('tipo', '')
+        context['prioridad_seleccionada'] = self.request.GET.get('prioridad', '')
+        context['q_busqueda'] = self.request.GET.get('q', '')
+        context['fecha_desde'] = self.request.GET.get('fecha_desde', '')
+        context['fecha_hasta'] = self.request.GET.get('fecha_hasta', '')
         return context
 
 
 @login_required
 def contestar_pqrs(request, pqrs_id):
     pqr = get_object_or_404(PQRS, id=pqrs_id)
+    is_htmx = request.headers.get('HX-Request') == 'true'
 
-    if pqr.estado == 'cerrado':
-        messages.warning(request, "Esta solicitud ya ha sido respondida y se encuentra cerrada.")
-        return redirect('listar_pqrs')
+    if request.method == 'GET' and is_htmx:
+        return render(request, 'admin/pqrs/partials/hilo_chat.html', {'pqr': pqr})
 
     if request.method == 'POST':
-        respuesta_texto = request.POST.get('respuesta')
+        respuesta_texto = request.POST.get('respuesta', '').strip()
         reserva_id = request.POST.get('reserva')
         reserva_obj = Reserva.objects.filter(id=reserva_id).first() if reserva_id else None
+        nuevo_estado = request.POST.get('estado', '').strip()
 
         if respuesta_texto:
             seguimiento_creado = Seguimiento.objects.create(
@@ -83,40 +141,59 @@ def contestar_pqrs(request, pqrs_id):
                 respuesta=respuesta_texto
             )
             
-            pqr.estado = 'cerrado'
+            # Actualizar estado si fue enviado o por defecto a respondido/en_proceso/cerrado
+            if nuevo_estado in ['abierto', 'en_proceso', 'cerrado']:
+                pqr.estado = nuevo_estado
+            elif not nuevo_estado:
+                # Si un admin responde, pasar a en_proceso o cerrado
+                pqr.estado = 'en_proceso' if pqr.estado == 'abierto' else pqr.estado
             pqr.save()
 
-            if pqr.usuario:
+            # Notificación al usuario si un administrador respondió
+            if pqr.usuario and pqr.usuario != request.user:
                 crear_notificacion_sistema(
                     usuario=pqr.usuario,
                     reserva=reserva_obj,
-                    mensaje=f"Tu PQRS #{pqr.id} recibió una respuesta: {respuesta_texto[:200]}.",
+                    mensaje=f"Respuesta en tu PQRS {pqr.radicado or f'#{pqr.id}'}: '{respuesta_texto[:120]}...'",
                     tipo="PQRS",
                     prioridad="alta"
                 )
+            # Notificación a los admins si un usuario/turista respondió
+            elif not (request.user.is_staff or getattr(request.user, 'es_admin', False)):
+                notificar_admines_pqrs(pqr)
 
             registrar_bitacora(
                 usuario=request.user,
-                accion='RESPUESTA',
+                accion='RESPUESTA_PQRS',
                 modulo='Seguimiento',
                 registro_id=seguimiento_creado.id,
                 seguimiento=seguimiento_creado,
                 pqrs=pqr,
-                descripcion=f"Respuesta registrada para la PQRS #{pqr.id} ('{pqr.asunto}').",
+                descripcion=f"Mensaje registrado en la PQRS #{pqr.id} ('{pqr.asunto}').",
                 ip_origen=request.META.get('REMOTE_ADDR')
             )
             
+            if is_htmx:
+                return render(request, 'admin/pqrs/partials/hilo_chat.html', {'pqr': pqr})
             
-            
-            messages.success(request, "Respuesta enviada y solicitud cerrada con éxito.")
+            messages.success(request, "Respuesta enviada con éxito.")
             return redirect('listar_pqrs')
 
-    reservas_cliente = Reserva.objects.filter(usuario=pqr.usuario) if pqr.usuario else Reserva.objects.none()
+    if is_htmx:
+        return render(request, 'admin/pqrs/partials/hilo_chat.html', {'pqr': pqr})
 
+    reservas_cliente = Reserva.objects.filter(usuario=pqr.usuario) if pqr.usuario else Reserva.objects.none()
     return render(request, 'admin/contestar_pqrs.html', {
         'pqr': pqr,
         'reservas_cliente': reservas_cliente
     })
+
+
+@login_required
+def hilo_pqrs_view(request, pqrs_id):
+    """Endpoint que devuelve exclusivamente el hilo del chat de una PQRS."""
+    pqr = get_object_or_404(PQRS, id=pqrs_id)
+    return render(request, 'admin/pqrs/partials/hilo_chat.html', {'pqr': pqr})
 
 @login_required
 def guardar_pqrs(request):
