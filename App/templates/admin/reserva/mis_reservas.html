@@ -121,7 +121,7 @@
 
                                             {% if not reserva.pago %}
                                                 {% if estado == 'pendiente' %}
-                                                    <a href="{% url 'enviar_comprobante' %}?reserva_id={{ reserva.id }}" class="btn btn-success rounded-pill px-4 py-2 shadow-sm fw-semibold">
+                                                    <a href="{% url 'enviar_comprobante' %}?reserva_id={{ reserva.id }}&tipo=reserva" class="btn btn-success rounded-pill px-4 py-2 shadow-sm fw-semibold">
                                                         <i class="bi bi-wallet2 me-1"></i> Pagar reserva
                                                     </a>
                                                     <button type="button" class="btn btn-outline-secondary rounded-pill px-4 py-2 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#modalDescartar{{ reserva.id }}">

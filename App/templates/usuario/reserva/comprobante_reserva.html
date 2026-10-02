@@ -50,7 +50,7 @@
 
       <div class="mt-4 d-flex justify-content-between">
         <a href="#" onclick="window.print();return false;" class="btn btn-outline-secondary rounded-pill px-4">Imprimir / Guardar PDF</a>
-        <a href="{% url 'enviar_comprobante' %}?reserva_id={{ reserva.id }}" class="btn btn-success rounded-pill px-4">Enviar comprobante</a>
+        <a href="{% url 'enviar_comprobante' %}?reserva_id={{ reserva.id }}&tipo=reserva" class="btn btn-success rounded-pill px-4">Enviar comprobante</a>
       </div>
 
     </div>
