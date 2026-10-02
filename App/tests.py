@@ -1,3 +1,4 @@
+import re
 from datetime import date, timedelta
 from decimal import Decimal
 from django.test import TestCase, Client
@@ -123,6 +124,135 @@ class SeguridadFormulariosTests(TestCase):
         self.assertEqual(pago.monto, Decimal('350000.00'))
         # El estado debe ser 'pendiente', no 'aprobado'
         self.assertEqual(pago.estado_transaccion, 'pendiente')
+
+    def test_pago_penalidad_esta_disponible_en_enviar_comprobante(self):
+        """Una cancelación aprobada con penalidad debe aparecer como opción de pago en la vista de comprobantes."""
+        reserva_penalidad = Reserva.objects.create(
+            usuario=self.turista,
+            paquete=self.paquete,
+            monto_total=Decimal('350000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='cancelada',
+            estado_cancelacion='aprobada',
+            penalidad=Decimal('15000.00'),
+            fecha_inicio=date.today() + timedelta(days=10),
+            motivo_cancelacion='Cambio de planes'
+        )
+        self.client.force_login(self.turista)
+
+        response = self.client.get(reverse('enviar_comprobante'), {'reserva_id': reserva_penalidad.id})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '[Multa]')
+        self.assertContains(response, 'Valor:')
+        self.assertContains(response, 'Monto de la Penalidad')
+
+        gif_bytes = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;'
+        payload = {
+            'reserva': reserva_penalidad.id,
+            'referencia': 'PENALIDAD-123',
+            'banco_origen': 'Daviplata',
+            'metodo_pago': 'Transferencia Bancaria',
+            'imagen_comprobante': SimpleUploadedFile('penalidad.gif', gif_bytes, content_type='image/gif'),
+            'descripcion': 'Pago de penalidad'
+        }
+
+        response = self.client.post(reverse('enviar_comprobante'), data=payload)
+        self.assertEqual(response.status_code, 302)
+        pago = Pago.objects.get(reserva=reserva_penalidad)
+        self.assertEqual(pago.monto, Decimal('15000.00'))
+        self.assertEqual(pago.estado_transaccion, 'pendiente')
+
+        comprobantes = self.client.get(reverse('mis_comprobantes'))
+        self.assertEqual(comprobantes.status_code, 200)
+        self.assertContains(comprobantes, 'Penalidad')
+        self.assertContains(comprobantes, 'Reserva')
+
+    def test_pago_penalidad_en_url_directa_usa_tipo_penalidad(self):
+        """Una URL directa con tipo=penalidad debe mostrar inmediatamente el formulario de penalidad, aunque la reserva aún esté en flujo de revisión."""
+        reserva_penalidad = Reserva.objects.create(
+            usuario=self.turista,
+            paquete=self.paquete,
+            monto_total=Decimal('350000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='pendiente',
+            estado_cancelacion='pendiente',
+            penalidad=Decimal('15000.00'),
+            fecha_inicio=date.today() + timedelta(days=10),
+            motivo_cancelacion='Cambio de planes'
+        )
+        self.client.force_login(self.turista)
+
+        response = self.client.get(reverse('enviar_comprobante'), {'reserva_id': reserva_penalidad.id, 'tipo': 'penalidad'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Penalidad a Vincular')
+        self.assertEqual(response.context['selected_tipo'], 'penalidad')
+
+    def test_pago_penalidad_directa_sigue_mostrando_la_opcion_si_ya_hay_pago_pendiente(self):
+        """Si un usuario llega por URL directa a una penalidad con pago pendiente, el select debe seguir mostrando esa penalidad y no el placeholder."""
+        reserva_penalidad = Reserva.objects.create(
+            usuario=self.turista,
+            paquete=self.paquete,
+            monto_total=Decimal('350000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='cancelada',
+            estado_cancelacion='aprobada',
+            penalidad=Decimal('15000.00'),
+            fecha_inicio=date.today() + timedelta(days=14),
+            motivo_cancelacion='Cambio de planes pendiente'
+        )
+        Pago.objects.create(
+            reserva=reserva_penalidad,
+            referencia='PEN-EXISTENTE',
+            banco_origen='Daviplata',
+            monto=Decimal('15000.00'),
+            estado_transaccion='pendiente',
+            imagen_comprobante=SimpleUploadedFile('penalidad_existente.gif', b'GIF89a', content_type='image/gif')
+        )
+        self.client.force_login(self.turista)
+
+        response = self.client.get(reverse('enviar_comprobante'), {'reserva_id': reserva_penalidad.id, 'tipo': 'penalidad'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Penalidad a Vincular')
+        self.assertContains(response, str(reserva_penalidad.id))
+        self.assertNotContains(response, 'Selecciona laaaaaaaaaa reserva')
+
+    def test_pago_penalidad_multiple_elige_una_opcion_unica(self):
+        """Cuando hay varias penalidades, la vista debe elegir una sola opción y no dejar el select en el placeholder."""
+        reserva1 = Reserva.objects.create(
+            usuario=self.turista,
+            paquete=self.paquete,
+            monto_total=Decimal('350000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='cancelada',
+            estado_cancelacion='aprobada',
+            penalidad=Decimal('15000.00'),
+            fecha_inicio=date.today() + timedelta(days=12),
+            motivo_cancelacion='Cambio de planes 1'
+        )
+        reserva2 = Reserva.objects.create(
+            usuario=self.turista,
+            paquete=self.paquete,
+            monto_total=Decimal('450000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='cancelada',
+            estado_cancelacion='aprobada',
+            penalidad=Decimal('20000.00'),
+            fecha_inicio=date.today() + timedelta(days=20),
+            motivo_cancelacion='Cambio de planes 2'
+        )
+        self.client.force_login(self.turista)
+
+        response = self.client.get(reverse('enviar_comprobante'), {'tipo': 'penalidad'})
+        html = response.content.decode()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['selected_tipo'], 'penalidad')
+        self.assertIn(str(reserva1.id), html)
+        self.assertEqual(len(re.findall(r'data-tipo="penalidad"[^>]*selected', html)), 1)
 
     def test_comprobante_disallowed_file_extension(self):
         """

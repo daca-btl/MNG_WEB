@@ -847,8 +847,11 @@ class Pago(models.Model):
                 raise ValidationError({'banco_origen': 'Debe especificar el banco de origen para aprobar el comprobante.'})
             if not self.monto:
                 raise ValidationError({'monto': 'Debe especificar el monto pagado para aprobar el comprobante.'})
-            if self.reserva and self.monto < self.reserva.monto_total:
-                raise ValidationError({'monto': 'El monto pagado no puede ser menor al monto total de la reserva.'})
+
+            if self.reserva:
+                monto_requerido = self.reserva.penalidad if self.reserva.estado_cancelacion == 'aprobada' and self.reserva.penalidad and self.reserva.penalidad > 0 else self.reserva.monto_total
+                if self.monto < monto_requerido:
+                    raise ValidationError({'monto': 'El monto pagado no puede ser menor al monto requerido para esta reserva o penalidad.'})
         elif self.estado_transaccion == 'rechazado':
             if not self.nota_admin:
                 raise ValidationError({'nota_admin': 'Debe justificar el rechazo añadiendo una nota del administrador.'})
@@ -856,8 +859,10 @@ class Pago(models.Model):
     def save(self, *args, **kwargs):
         self.clean()
         if self.estado_transaccion == 'aprobado' and self.reserva:
-            self.reserva.estado_reserva = 'confirmada'
-            self.reserva.save()
+            es_penalidad = self.reserva.estado_cancelacion == 'aprobada' and self.reserva.penalidad and self.reserva.penalidad > 0
+            if not es_penalidad:
+                self.reserva.estado_reserva = 'confirmada'
+                self.reserva.save()
         elif self.estado_transaccion == 'rechazado' and self.reserva and (self.reserva.estado_reserva == 'pendiente'):
             pass
         super().save(*args, **kwargs)
