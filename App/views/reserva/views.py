@@ -230,11 +230,12 @@ def normalizar_estados_cancelacion_usuario(usuario):
         estado_reserva='cancelada'
     ).update(estado_reserva='cancelada')
 
-    # Caso 2: una reserva marcada como cancelada, pero con solicitud aún pendiente, se considera aprobada por coherencia.
+    # Caso 2: si la reserva ya fue cancelada y la solicitud sigue pendiente, solo se aprueba automáticamente cuando no hay penalidad.
     Reserva.objects.filter(
         usuario=usuario,
         estado_reserva='cancelada',
-        estado_cancelacion='pendiente'
+        estado_cancelacion='pendiente',
+        penalidad__lte=0
     ).update(estado_cancelacion='aprobada')
 
     # Caso 3: una solicitud ya aprobada no puede seguir activa en el flujo de reservas del usuario.
@@ -326,6 +327,9 @@ def cancelar_reserva_usuario(request, reserva_id=None, pk=None):
         return redirect('mis_reservas_usuario')
 
     monto_total = Decimal(reserva.monto_total or 0)
+    if monto_total <= 0 and pago:
+        monto_total = Decimal(getattr(pago, 'monto', 0) or 0)
+
     fecha_tour = getattr(reserva, 'fecha_inicio', None)
     
     penalidad_calculada = Decimal('0.00')
@@ -351,10 +355,26 @@ def cancelar_reserva_usuario(request, reserva_id=None, pk=None):
 
     reserva.motivo_cancelacion = motivo
     reserva.penalidad = penalidad_calculada
+
+    if penalidad_calculada <= 0:
+        reserva.estado_reserva = 'cancelada'
+        reserva.estado_cancelacion = 'aprobada'
+        reserva.save()
+
+        crear_notificacion_sistema(
+            usuario=request.user,
+            reserva=reserva,
+            mensaje=f"Tu cancelación de la reserva #{reserva.id} fue aprobada automáticamente porque no aplica multa. Motivo: '{motivo}'.",
+            tipo="Reserva",
+            prioridad="media"
+        )
+
+        messages.success(request, f"La cancelación de la reserva #{reserva.id} fue aprobada automáticamente por no tener penalidad.")
+        return redirect('mis_cancelaciones')
+
     reserva.estado_reserva = 'cancelada'
     reserva.estado_cancelacion = 'pendiente'
     reserva.save()
-
 
     crear_notificacion_sistema(
         usuario=request.user,

@@ -245,13 +245,14 @@ class CancelacionReservaTests(TestCase):
         self.reserva = Reserva.objects.create(
             usuario=self.turista,
             paquete=self.paquete,
-            monto_total=Decimal('350000.00'),
             numero_adultos=2,
             numero_menores=0,
             estado_reserva='confirmada',
             fecha_inicio=date.today() + timedelta(days=10),
             estado_cancelacion=None
         )
+        self.reserva.monto_total = Decimal('350000.00')
+        self.reserva.save(update_fields=['monto_total'])
         Pago.objects.create(
             reserva=self.reserva,
             referencia='REF-REQUEST-001',
@@ -273,6 +274,98 @@ class CancelacionReservaTests(TestCase):
         self.reserva.refresh_from_db()
         self.assertEqual(self.reserva.estado_reserva, 'cancelada')
         self.assertEqual(self.reserva.estado_cancelacion, 'pendiente')
+
+    def test_reserva_con_pago_y_sin_penalidad_se_aprueba_automaticamente(self):
+        """Si la cancelación no genera multa, debe aprobarse automáticamente y no quedar en revisión."""
+        self.reserva = Reserva.objects.create(
+            usuario=self.turista,
+            paquete=self.paquete,
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='confirmada',
+            fecha_inicio=None,
+            estado_cancelacion=None
+        )
+        self.reserva.monto_total = Decimal('350000.00')
+        self.reserva.save(update_fields=['monto_total'])
+        Pago.objects.create(
+            reserva=self.reserva,
+            referencia='REF-APPROVE-AUTO',
+            banco_origen='Daviplata',
+            metodo_pago='Transferencia Bancaria',
+            monto=Decimal('350000.00'),
+            imagen_comprobante=SimpleUploadedFile('pago.gif', b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;', content_type='image/gif'),
+            descripcion='Pago validado',
+            estado_transaccion='aprobado'
+        )
+        self.client.force_login(self.turista)
+
+        response = self.client.post(
+            reverse('cancelar_reserva_usuario', args=[self.reserva.id]),
+            {'motivo_cancelacion': 'Cambio de planes'}
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.reserva.refresh_from_db()
+        self.assertEqual(self.reserva.estado_reserva, 'cancelada')
+        self.assertEqual(self.reserva.estado_cancelacion, 'aprobada')
+
+    def test_mis_cancelaciones_muestra_boton_pagar_cuando_hay_penalidad_aprobada(self):
+        """Si la cancelación fue aprobada con penalidad, el usuario debe poder pagar la penalidad desde la página de cancelaciones."""
+        reserva = Reserva.objects.create(
+            usuario=self.turista,
+            paquete=self.paquete,
+            monto_total=Decimal('350000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='cancelada',
+            fecha_inicio=date.today() + timedelta(days=10),
+            estado_cancelacion='aprobada',
+            motivo_cancelacion='Solicituda de cancelación',
+            penalidad=Decimal('15000.00')
+        )
+        self.client.force_login(self.turista)
+
+        response = self.client.get(reverse('mis_cancelaciones'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pagar penalidad')
+        self.assertContains(response, 'Penalidad:')
+
+    def test_mis_cancelaciones_muestra_boton_pagar_penalidad_solo_cuando_hay_penalidad(self):
+        """La acción de pago debe ser por penalidad y no aparecer cuando no hay multa."""
+        Reserva.objects.create(
+            usuario=self.turista,
+            paquete=self.paquete,
+            monto_total=Decimal('350000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='cancelada',
+            fecha_inicio=date.today() + timedelta(days=10),
+            estado_cancelacion='aprobada',
+            motivo_cancelacion='Solicituda de cancelación',
+            penalidad=Decimal('15000.00')
+        )
+        Reserva.objects.create(
+            usuario=self.turista,
+            paquete=self.paquete,
+            monto_total=Decimal('350000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='cancelada',
+            fecha_inicio=date.today() + timedelta(days=12),
+            estado_cancelacion='aprobada',
+            motivo_cancelacion='Cancelación sin multa',
+            penalidad=Decimal('0.00')
+        )
+        self.client.force_login(self.turista)
+
+        response = self.client.get(reverse('mis_cancelaciones'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pagar penalidad')
+        self.assertContains(response, 'Sin multa')
+        self.assertNotContains(response, 'Pagar reserva')
 
     def test_mis_reservas_excluye_las_canceladas_y_solicitudes_de_cancelacion(self):
         """Si la reserva fue cancelada por el usuario, ya no debe seguir visible en Mis Reservas."""
