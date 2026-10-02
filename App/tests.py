@@ -240,8 +240,8 @@ class CancelacionReservaTests(TestCase):
         self.assertEqual(self.reserva.estado_cancelacion, 'pendiente')
         self.assertEqual(self.reserva.estado_reserva, 'confirmada')
 
-    def test_reserva_con_cancelacion_pendiente_sigue_apareciendo_en_mis_reservas(self):
-        """Una reserva activa no debe desaparecer de la lista de reservas solo por tener una solicitud de cancelación pendiente."""
+    def test_reserva_con_pago_queda_cancelada_al_solicitar_cancelacion(self):
+        """Cuando el usuario solicita cancelar una reserva pagada, el estado principal debe pasar a cancelada."""
         self.reserva = Reserva.objects.create(
             usuario=self.turista,
             paquete=self.paquete,
@@ -250,7 +250,7 @@ class CancelacionReservaTests(TestCase):
             numero_menores=0,
             estado_reserva='confirmada',
             fecha_inicio=date.today() + timedelta(days=10),
-            estado_cancelacion='pendiente'
+            estado_cancelacion=None
         )
         Pago.objects.create(
             reserva=self.reserva,
@@ -264,14 +264,18 @@ class CancelacionReservaTests(TestCase):
         )
         self.client.force_login(self.turista)
 
-        response = self.client.get(reverse('mis_reservas_usuario'))
+        response = self.client.post(
+            reverse('cancelar_reserva_usuario', args=[self.reserva.id]),
+            {'motivo_cancelacion': 'Necesito cancelar la reserva'}
+        )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Tour de prueba')
-        self.assertContains(response, 'Cancelación en revisión')
+        self.assertEqual(response.status_code, 302)
+        self.reserva.refresh_from_db()
+        self.assertEqual(self.reserva.estado_reserva, 'cancelada')
+        self.assertEqual(self.reserva.estado_cancelacion, 'pendiente')
 
-    def test_mis_reservas_excluye_las_canceladas_y_aprobadas(self):
-        """Solo deben salir de Mis Reservas las reservas ya canceladas o aprobadas; las pendientes siguen visibles."""
+    def test_mis_reservas_excluye_las_canceladas_y_solicitudes_de_cancelacion(self):
+        """Si la reserva fue cancelada por el usuario, ya no debe seguir visible en Mis Reservas."""
         activa = Reserva.objects.create(
             usuario=self.turista,
             paquete=self.paquete,
@@ -321,7 +325,7 @@ class CancelacionReservaTests(TestCase):
         self.assertEqual(response.status_code, 200)
         reservas = list(response.context['reservas'])
         self.assertIn(activa, reservas)
-        self.assertIn(pendiente, reservas)
+        self.assertNotIn(pendiente, reservas)
         self.assertNotIn(cancelada, reservas)
         self.assertNotIn(aprobada_sin_cancelar, reservas)
 

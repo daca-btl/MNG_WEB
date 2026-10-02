@@ -222,14 +222,22 @@ class EliminarReservaAdminView(DeleteView):
 
 def normalizar_estados_cancelacion_usuario(usuario):
     """Corrige inconsistencias de estado para que la reserva y la cancelación siempre estén alineadas."""
-    # Caso 1: una reserva marcada como cancelada, pero con solicitud aún pendiente, se considera aprobada por coherencia.
+    # Caso 1: siempre que el usuario haya solicitado cancelar, la reserva debe quedar cancelada.
+    Reserva.objects.filter(
+        usuario=usuario,
+        estado_cancelacion='pendiente'
+    ).exclude(
+        estado_reserva='cancelada'
+    ).update(estado_reserva='cancelada')
+
+    # Caso 2: una reserva marcada como cancelada, pero con solicitud aún pendiente, se considera aprobada por coherencia.
     Reserva.objects.filter(
         usuario=usuario,
         estado_reserva='cancelada',
         estado_cancelacion='pendiente'
     ).update(estado_cancelacion='aprobada')
 
-    # Caso 2: una solicitud ya aprobada no puede seguir activa en el flujo de reservas del usuario.
+    # Caso 3: una solicitud ya aprobada no puede seguir activa en el flujo de reservas del usuario.
     Reserva.objects.filter(
         usuario=usuario,
         estado_cancelacion='aprobada'
@@ -237,7 +245,7 @@ def normalizar_estados_cancelacion_usuario(usuario):
         estado_reserva='cancelada'
     ).update(estado_reserva='cancelada')
 
-    # Caso 3: una cancelación rechazada no puede dejar la reserva en estado cancelado si fue reactivada.
+    # Caso 4: una cancelación rechazada no puede dejar la reserva en estado cancelado si fue reactivada.
     Reserva.objects.filter(
         usuario=usuario,
         estado_cancelacion='rechazada',
@@ -343,6 +351,7 @@ def cancelar_reserva_usuario(request, reserva_id=None, pk=None):
 
     reserva.motivo_cancelacion = motivo
     reserva.penalidad = penalidad_calculada
+    reserva.estado_reserva = 'cancelada'
     reserva.estado_cancelacion = 'pendiente'
     reserva.save()
 
@@ -361,7 +370,7 @@ def cancelar_reserva_usuario(request, reserva_id=None, pk=None):
         mensaje = (
             f"Hola {request.user.get_full_name() or request.user.username},\n\n"
             f"Recibimos tu solicitud de cancelación para la reserva #{reserva.id}.\n"
-            f"La reserva seguirá en estado '{reserva.estado_reserva}' hasta que el equipo la revise.\n\n"
+            f"La reserva quedó marcada como cancelada y su solicitud está en revisión administrativa.\n\n"
             f"- Motivo: {motivo}\n"
             f"- Penalidad calculada: COP ${penalidad_calculada:,.0f}\n"
             f"- Política aplicada: {politica_reembolso}\n\n"
