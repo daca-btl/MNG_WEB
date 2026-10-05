@@ -4,27 +4,27 @@ import unicodedata
 # Definir FAQs relacionadas con el negocio (Ecoturismo/Reservas)
 FAQS = [
     {
-        "keywords": ["horario", "horarios", "hora", "horas", "abren", "cierran", "apertura", "cierre", "atencion", "disponibilidad", "jornada"],
+        "keywords": ["horario", "horarios", "abren", "cierran", "apertura", "cierre", "atencion", "jornada", "a que hora", "que horas", "cuando abren"],
         "answer": "Nuestro horario de atención es de Lunes a Domingo de 8:00 AM a 6:00 PM."
     },
     {
-        "keywords": ["ubicacion", "donde", "direccion", "llegar", "ubicado", "ubicados", "sitio", "lugar", "encuentran", "queda"],
+        "keywords": ["ubicacion", "direccion", "como llegar", "donde estan ubicados", "donde queda", "donde se encuentran"],
         "answer": "Nos encontramos ubicados en el centro de la ciudad, en la dirección principal. ¡Esperamos tu visita!"
     },
     {
-        "keywords": ["servicio", "servicios", "ofrecen", "hacen", "actividad", "actividades", "tour", "tours", "paquete", "paquetes", "planes", "plan", "experiencias", "excursiones"],
+        "keywords": ["servicios ofrecen", "que hacen", "actividad", "actividades", "tour", "tours", "paquete", "paquetes", "planes", "plan", "experiencias", "excursiones"],
         "answer": "Ofrecemos reservas de tours, paquetes turísticos, actividades al aire libre y servicios con guías especializados."
     },
     {
-        "keywords": ["precio", "precios", "costo", "costos", "valor", "valores", "tarifa", "tarifas", "cuanto", "vale", "cuesta", "cobran", "dinero"],
+        "keywords": ["precio", "precios", "costo", "costos", "tarifas", "tarifa", "cuanto vale", "cuanto cuesta", "que cobran"],
         "answer": "Nuestros precios varían según el paquete o la actividad. Puedes consultar las tarifas detalladas en la sección de 'Tours' de nuestra página."
     },
     {
-        "keywords": ["reserva", "reservas", "reservar", "agendar", "apartar", "cupo", "cupos", "booking", "separar", "programar"],
+        "keywords": ["reserva", "reservas", "como reservar", "agendar", "apartar", "cupo", "cupos", "booking", "separar", "programar"],
         "answer": "Puedes reservar directamente a través de nuestra plataforma web ingresando a la sección de 'Tours' o añadiendo un paquete a tu carrito."
     },
     {
-        "keywords": ["pago", "pagos", "pagar", "metodo", "tarjeta", "efectivo", "transferencia", "nequi", "daviplata", "consignacion", "credito", "debito"],
+        "keywords": ["pago", "pagos", "como pagar", "metodo de pago", "tarjeta", "efectivo", "transferencia", "nequi", "daviplata", "consignacion", "credito", "debito"],
         "answer": "Aceptamos pagos con tarjeta de crédito, débito y transferencias. Debes enviar el comprobante de pago en el módulo correspondiente."
     },
     {
@@ -36,15 +36,15 @@ FAQS = [
         "answer": "¡Sí! Somos un lugar pet-friendly. Tus mascotas son bienvenidas en la mayoría de nuestras actividades."
     },
     {
-        "keywords": ["contacto", "telefono", "celular", "email", "correo", "llamar", "whatsapp", "comunicarse", "numero", "escribir"],
+        "keywords": ["contacto", "telefono", "celular", "email", "correo", "llamar", "whatsapp", "comunicarse", "numero", "escribir", "contactar"],
         "answer": "Puedes contactarnos al teléfono +57 322 3465191 o al correo contacto@monagua.com. También puedes dejar un ticket en nuestra sección de Contacto."
     },
     {
-        "keywords": ["guia", "guias", "personas", "acompañante", "acompañantes", "orientador", "asesor", "instructor"],
+        "keywords": ["guia", "guias", "acompañante", "acompañantes", "orientador", "asesor", "instructor", "quien nos acompaña"],
         "answer": "Nuestros tours incluyen guías turísticos certificados que te acompañarán durante toda la experiencia."
     },
     {
-        "keywords": ["comida", "comidas", "restaurante", "almuerzo", "desayuno", "cena", "hambre", "alimentacion", "bebida", "bebidas", "snacks", "refrigerio", "alimentos"],
+        "keywords": ["comida", "comidas", "restaurante", "almuerzo", "desayuno", "cena", "alimentacion", "bebida", "bebidas", "snacks", "refrigerio", "alimentos", "que comer", "donde comer"],
         "answer": "Durante nuestras actividades recomendamos llevar hidratación y snacks. También puedes consultar por los restaurantes aliados del pueblo."
     }
 ]
@@ -70,8 +70,16 @@ def procesar_mensaje(mensaje, request):
     max_coincidencias = 0
     
     for faq in FAQS:
-        # Usar SOLO coincidencias de palabras completas (\b) para evitar alucinaciones por subcadenas
-        coincidencias = sum(1 for keyword in faq['keywords'] if re.search(r'\b' + re.escape(keyword) + r'\b', mensaje_lower))
+        coincidencias = 0
+        for keyword in faq['keywords']:
+            # Si la keyword es una frase (tiene espacios), buscamos la subcadena completa
+            if " " in keyword:
+                if keyword in mensaje_lower:
+                    coincidencias += 1
+            # Si es una sola palabra, usamos limites de palabra \b para evitar falsos positivos
+            else:
+                if re.search(r'\b' + re.escape(keyword) + r'\b', mensaje_lower):
+                    coincidencias += 1
             
         if coincidencias > max_coincidencias:
             max_coincidencias = coincidencias

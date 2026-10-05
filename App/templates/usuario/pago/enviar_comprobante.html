@@ -82,13 +82,22 @@
                         {% csrf_token %}
                         <div class="row">
                             <div class="form-group col-md-12 mb-3">
-                                <label for="id_reserva" class="form-label requiredField">Reserva o Penalidad a Vincular<span class="asteriskField">*</span></label>
-                                <select name="reserva" id="id_reserva" class="form-select" required>
-                                    <option value="">— Selecciona la reserva —</option>
+                                <label id="id_reserva_label" for="id_reserva" class="form-label requiredField">
+                                    {% if selected_tipo == 'penalidad' %}Penalidad a Vincular{% else %}Reserva a Vincular{% endif %}
+                                    <span class="asteriskField">*</span>
+                                </label>
+                                <select name="reserva" id="id_reserva" class="form-select" required data-selected-tipo="{{ selected_tipo|default:'reserva' }}" data-selected-id="{{ selected_reserva_id|default:'' }}">
+                                    <option value="">— Selecciona la {% if selected_tipo == 'penalidad' %}penalidad{% else %}reserva{% endif %} —</option>
                                     {% for r in reservas_elegibles %}
-                                        <option value="{{ r.id }}" data-monto="COP ${{ r.monto_total|floatformat:0|intcomma }}" {% if selected_reserva_id|add:"0" == r.id %}selected{% endif %}>
-                                            {% if r.multa %}[Multa] {{ r.paquete.nombre }} — Valor: COP ${{ r.multa|floatformat:0|intcomma }}{% else %}[Reserva] {{ r.paquete.nombre }} — Valor: COP ${{ r.monto_total|floatformat:0|intcomma }} (Fecha: {{ r.fecha }}){% endif %}
-                                        </option>
+                                        {% if r.estado_cancelacion == 'aprobada' and r.penalidad and r.penalidad > 0 %}
+                                            <option value="{{ r.id }}" data-tipo="penalidad" data-monto="COP ${{ r.penalidad|floatformat:0|intcomma }}" {% if selected_reserva_id|default:'' == r.id|stringformat:'s' or selected_tipo == 'penalidad' and not selected_reserva_id and forloop.counter0 == 0 %}selected{% endif %}>
+                                                [Multa] {{ r.paquete.nombre }} — Valor: COP ${{ r.penalidad|floatformat:0|intcomma }}
+                                            </option>
+                                        {% else %}
+                                            <option value="{{ r.id }}" data-tipo="reserva" data-monto="COP ${{ r.monto_total|floatformat:0|intcomma }}" {% if selected_reserva_id|default:'' == r.id|stringformat:'s' %}selected{% endif %}>
+                                                [Reserva] {{ r.paquete.nombre }} — Valor: COP ${{ r.monto_total|floatformat:0|intcomma }} (Fecha: {{ r.fecha_inicio|date:"d/m/Y" }})
+                                            </option>
+                                        {% endif %}
                                     {% endfor %}
                                 </select>
                             </div>
@@ -117,7 +126,9 @@
                         </div>
                         <div class="row">
                             <div class="form-group col-md-6 mb-3">
-                                <label for="id_monto_display" class="form-label text-muted">Monto de la Reserva</label>
+                                <label id="id_monto_label" for="id_monto_display" class="form-label text-muted">
+                                    {% if selected_tipo == 'penalidad' %}Monto de la Penalidad{% else %}Monto de la Reserva{% endif %}
+                                </label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted">$</span>
                                     <input type="text" id="id_monto_display" class="form-control bg-light" readonly placeholder="Selecciona una reserva para ver el valor" value="">
