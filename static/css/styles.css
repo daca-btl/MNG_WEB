@@ -94,6 +94,46 @@ main.wrapper,
     overflow-x: clip;
 }
 
+main.wrapper {
+    padding-top: 7.5rem;
+}
+
+.content-wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+main .content-wrapper > nav[aria-label="breadcrumb"],
+main nav[aria-label="breadcrumb"].breadcrumb-shell {
+    display: inline-flex !important;
+    width: fit-content;
+    position: relative;
+    z-index: 30;
+    margin: 0 0 1rem 0;
+    transform: translateZ(0);
+    background: linear-gradient(135deg, #f7faf8 0%, #ffffff 100%);
+    border: 1px solid rgba(25, 135, 84, 0.18);
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    border-radius: 999px;
+}
+
+main .breadcrumb {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 0.15rem;
+    margin-bottom: 0 !important;
+}
+
+main .breadcrumb-item + .breadcrumb-item::before {
+    color: #6c757d;
+    padding-right: 0.45rem;
+}
+
+main .breadcrumb-item.active {
+    color: #111827;
+    font-weight: 700;
+}
+
 .row {
     margin-left: 0 !important;
     margin-right: 0 !important;
