@@ -70,8 +70,16 @@ def procesar_mensaje(mensaje, request):
     max_coincidencias = 0
     
     for faq in FAQS:
-        # Usar SOLO coincidencias de palabras completas (\b) para evitar alucinaciones por subcadenas
-        coincidencias = sum(1 for keyword in faq['keywords'] if re.search(r'\b' + re.escape(keyword) + r'\b', mensaje_lower))
+        coincidencias = 0
+        for keyword in faq['keywords']:
+            # Si la keyword es una frase (tiene espacios), buscamos la subcadena completa
+            if " " in keyword:
+                if keyword in mensaje_lower:
+                    coincidencias += 1
+            # Si es una sola palabra, usamos limites de palabra \b para evitar falsos positivos
+            else:
+                if re.search(r'\b' + re.escape(keyword) + r'\b', mensaje_lower):
+                    coincidencias += 1
             
         if coincidencias > max_coincidencias:
             max_coincidencias = coincidencias
