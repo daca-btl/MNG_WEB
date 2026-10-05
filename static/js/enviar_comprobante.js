@@ -46,16 +46,71 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const reservaSelect = document.getElementById('id_reserva');
     const montoDisplay = document.getElementById('id_monto_display');
+    const reservaLabel = document.getElementById('id_reserva_label');
+    const montoLabel = document.getElementById('id_monto_label');
     if (reservaSelect && montoDisplay) {
-        const updateMontoDisplay = function() {
-            const selectedOpt = reservaSelect.options[reservaSelect.selectedIndex];
-            if (selectedOpt && selectedOpt.dataset.monto) {
-                montoDisplay.value = selectedOpt.dataset.monto;
-            } else {
-                montoDisplay.value = '';
+        const setPlaceholderText = function() {
+            const explicitTipo = (reservaSelect.dataset.selectedTipo || '').toLowerCase();
+            const tipo = explicitTipo === 'penalidad' ? 'penalidad' : 'reserva';
+            const placeholderOpt = reservaSelect.options[0];
+            if (placeholderOpt) {
+                placeholderOpt.textContent = `— Selecciona la ${tipo} —`;
             }
         };
+
+        const selectInitialOption = function() {
+            const explicitTipo = (reservaSelect.dataset.selectedTipo || '').toLowerCase();
+            const selectedId = (reservaSelect.dataset.selectedId || '').toString();
+            setPlaceholderText();
+
+            if (explicitTipo === 'penalidad') {
+                const penaltyOpt = Array.from(reservaSelect.options).find(option => option.dataset.tipo === 'penalidad');
+                if (penaltyOpt) {
+                    reservaSelect.value = penaltyOpt.value;
+                }
+            } else if (selectedId) {
+                const matchingOpt = Array.from(reservaSelect.options).find(option => option.value === selectedId);
+                if (matchingOpt) {
+                    reservaSelect.value = matchingOpt.value;
+                }
+            }
+        };
+
+        const updateMontoDisplay = function() {
+            const explicitTipo = (reservaSelect.dataset.selectedTipo || '').toLowerCase();
+            const selectedOpt = reservaSelect.options[reservaSelect.selectedIndex];
+            const optionTipo = (selectedOpt && selectedOpt.dataset.tipo) ? selectedOpt.dataset.tipo.toLowerCase() : explicitTipo;
+            const tipo = optionTipo === 'penalidad' ? 'Penalidad' : 'Reserva';
+
+            if (selectedOpt && selectedOpt.dataset.monto) {
+                montoDisplay.value = selectedOpt.dataset.monto;
+                if (reservaLabel) {
+                    reservaLabel.textContent = `${tipo} a Vincular *`;
+                }
+                if (montoLabel) {
+                    montoLabel.textContent = `Monto de la ${tipo}`;
+                }
+            } else if (explicitTipo === 'penalidad') {
+                montoDisplay.value = '';
+                if (reservaLabel) {
+                    reservaLabel.textContent = 'Penalidad a Vincular *';
+                }
+                if (montoLabel) {
+                    montoLabel.textContent = 'Monto de la Penalidad';
+                }
+            } else {
+                montoDisplay.value = '';
+                if (reservaLabel) {
+                    reservaLabel.textContent = 'Reserva a Vincular *';
+                }
+                if (montoLabel) {
+                    montoLabel.textContent = 'Monto de la Reserva';
+                }
+            }
+        };
+
         reservaSelect.addEventListener('change', updateMontoDisplay);
+        selectInitialOption();
         updateMontoDisplay();
     }
 });
