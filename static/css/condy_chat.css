@@ -156,15 +156,30 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Accesibilidad: Estilos de Foco */
+.condy-chat-btn:focus-visible,
+#condy-chat-close:focus-visible,
+.chat-option-btn:focus-visible,
+#condy-chat-input-text:focus-visible,
+.condy-send-btn:focus-visible {
+  outline: 3px solid #0d6efd;
+  outline-offset: 2px;
+}
+
 /* Responsividad para móviles */
 @media (max-width: 576px) {
   .condy-chat-widget {
-    bottom: 10px;
-    right: 10px;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    align-items: flex-end;
+    padding: 15px;
   }
   
   .condy-chat-window {
-    width: calc(100vw - 20px);
-    height: 60vh;
+    width: 100%;
+    height: calc(100dvh - 100px);
+    max-height: calc(100dvh - 100px);
+    border-radius: 12px;
   }
 }
