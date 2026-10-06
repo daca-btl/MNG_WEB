@@ -1,0 +1,13 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>Eliminar Aseguradora</h1>
+    <p>¿Está seguro de que desea eliminar la aseguradora "{{ object }}"?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Confirmar Eliminación</button>
+        <a href="{% url 'aseguradora_listar' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}
