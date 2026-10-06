@@ -1,0 +1,13 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>Editar Póliza de Viaje</h1>
+    <!-- Aquí irá el formulario para editar pólizas -->
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Actualizar</button>
+    </form>
+</div>
+{% endblock %}

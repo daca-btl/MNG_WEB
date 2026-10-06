@@ -1,0 +1,13 @@
+{% extends 'admin/base-admin.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>Eliminar Póliza de Viaje</h1>
+    <p>¿Está seguro de que desea eliminar la póliza "{{ object }}"?</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Confirmar Eliminación</button>
+        <a href="{% url 'poliza_listar' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}
