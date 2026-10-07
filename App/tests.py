@@ -640,3 +640,71 @@ class CancelacionReservaTests(TestCase):
         self.assertIn(aprobada, cancelaciones)
         self.assertIn(pendiente, cancelaciones)
         self.assertNotIn(rechazada, cancelaciones)
+
+
+class CrudBootstrapConsistencyTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.admin = Usuario.objects.create_user(
+            username='admin_bootstrap',
+            email='admin@monagua.com',
+            password='Password123#',
+            first_name='Admin',
+            last_name='Bootstrap',
+            rol=Usuario.Roles.ADMIN,
+            is_staff=True,
+            is_superuser=False,
+        )
+        self.categoria = Categoria.objects.create(nombre='Aventura', estado=True)
+        self.paquete = Paquete.objects.create(
+            nombre='Ruta de la Cueva',
+            descripcion='Recorrido en la montaña',
+            categoria=self.categoria,
+            punto_encuentro='Plaza central',
+            hora_encuentro='08:00:00',
+            dias_duracion=2,
+            noches_duracion=1,
+            estado=True,
+            imagen=SimpleUploadedFile('test.jpg', b'contenido_imagen', content_type='image/jpeg'),
+        )
+        from App.models import Temporada, Actividades, Tarifa
+
+        self.temporada = Temporada.objects.create(
+            nombre='Alta Temporada',
+            descripcion='Temporada alta',
+            fecha_inicio=date.today(),
+            fecha_fin=date.today() + timedelta(days=15),
+            estado=True,
+        )
+        self.actividad = Actividades.objects.create(
+            nombre='Senderismo',
+            descripcion='Senderismo guiado',
+            apto_menores=True,
+            estado=True,
+        )
+        self.tarifa = Tarifa.objects.create(
+            paquete=self.paquete,
+            temporada=self.temporada,
+            precio_adulto=150000,
+            precio_menor=100000,
+            estado=True,
+        )
+
+    def test_delete_forms_use_consistent_bootstrap_action_buttons(self):
+        self.client.force_login(self.admin)
+
+        urls_to_check = [
+            ('eliminar_paquete', self.paquete.id),
+            ('eliminar_categoria', self.categoria.id),
+            ('eliminar_temporada', self.temporada.id),
+            ('eliminar_actividad', self.actividad.id),
+            ('eliminar_tarifa', self.tarifa.id),
+        ]
+
+        for url_name, obj_id in urls_to_check:
+            with self.subTest(url_name=url_name):
+                response = self.client.get(reverse(url_name, args=[obj_id]))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'Confirmar Eliminación')
+                self.assertContains(response, 'btn btn-danger px-4 rounded-pill fw-bold')
+                self.assertContains(response, 'btn btn-outline-secondary px-4 rounded-pill fw-semibold')
