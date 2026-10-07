@@ -44,6 +44,60 @@
     --estadisticas-grid-line: #f1f5f9;
 }
 
+.admin-page-header {
+    background: linear-gradient(135deg, rgba(44, 110, 60, 0.12), rgba(25, 135, 84, 0.04)) !important;
+    border: 1px solid rgba(44, 110, 60, 0.15) !important;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05) !important;
+}
+
+.admin-page-title {
+    color: var(--verde-main, #2c6e3c) !important;
+    font-weight: 800 !important;
+}
+
+.admin-list-panel {
+    border: 1px solid rgba(44, 110, 60, 0.12) !important;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05) !important;
+    border-radius: 1.25rem !important;
+}
+
+.admin-filter-shell {
+    background: rgba(248, 250, 252, 0.9) !important;
+    border: 1px solid rgba(44, 110, 60, 0.12) !important;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04) !important;
+}
+
+.admin-data-table thead {
+    background: rgba(44, 110, 60, 0.06) !important;
+}
+
+.admin-data-table thead th {
+    color: #1f2937 !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+
+.admin-data-table tbody tr {
+    transition: background 0.2s ease, transform 0.2s ease !important;
+}
+
+.admin-data-table tbody tr:hover {
+    background: rgba(44, 110, 60, 0.04) !important;
+}
+
+.admin-badge-success {
+    background: rgba(44, 110, 60, 0.12) !important;
+    color: var(--verde-main, #2c6e3c) !important;
+    border: 1px solid rgba(44, 110, 60, 0.2) !important;
+}
+
+.admin-empty-state {
+    background: rgba(248, 250, 252, 0.9) !important;
+    border: 1px dashed rgba(44, 110, 60, 0.22) !important;
+    color: #475569 !important;
+}
+
 /* Utilitarios para la paleta de estadísticas */
 .text-esta-blue { color: var(--estadisticas-blue) !important; }
 .bg-esta-blue { background-color: var(--estadisticas-blue) !important; }
