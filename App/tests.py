@@ -708,3 +708,29 @@ class CrudBootstrapConsistencyTests(TestCase):
                 self.assertContains(response, 'Confirmar Eliminación')
                 self.assertContains(response, 'btn btn-danger px-4 rounded-pill fw-bold')
                 self.assertContains(response, 'btn btn-outline-secondary px-4 rounded-pill fw-semibold')
+
+    def test_create_and_edit_forms_use_same_green_header(self):
+        self.client.force_login(self.admin)
+
+        urls_to_check = [
+            ('crear_paquete', None),
+            ('editar_paquete', self.paquete.id),
+            ('crear_categoria', None),
+            ('editar_categoria', self.categoria.id),
+            ('crear_temporada', None),
+            ('editar_temporada', self.temporada.id),
+            ('crear_actividad', None),
+            ('editar_actividad', self.actividad.id),
+            ('crear_tarifa', None),
+            ('editar_tarifa', self.tarifa.id),
+        ]
+
+        for url_name, obj_id in urls_to_check:
+            with self.subTest(url_name=url_name):
+                if obj_id is None:
+                    response = self.client.get(reverse(url_name))
+                else:
+                    response = self.client.get(reverse(url_name, args=[obj_id]))
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'bg-success text-white p-4 border-0')
+                self.assertContains(response, 'btn btn-success px-4 rounded-pill shadow-sm fw-bold')

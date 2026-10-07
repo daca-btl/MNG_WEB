@@ -15,9 +15,9 @@
 :root {
     --bs-body-font-family: 'Poppins', sans-serif;
     --bs-font-sans-serif: 'Poppins', sans-serif;
-    --bs-success: #1a261f;
-    --bs-success-rgb: 26, 38, 31;
-    --primary-green: #1a261f;
+    --bs-success: #2c6e3c;
+    --bs-success-rgb: 44, 110, 60;
+    --primary-green: #2c6e3c;
     
     /* Paleta Monagua - Verde */
     --verde-oscuro: #005215;
@@ -314,6 +314,31 @@ main .breadcrumb-item.active {
     border-color: var(--verde-main, #2c6e3c) !important;
     box-shadow: 0 0 0 0.2rem rgba(44, 110, 60, 0.2) !important;
     background-color: #ffffff !important;
+}
+
+.btn-success,
+.bg-success,
+.badge.bg-success,
+.card-header.bg-success {
+    background-color: var(--verde-main, #2c6e3c) !important;
+    border-color: var(--verde-main, #2c6e3c) !important;
+}
+
+.btn-success:hover,
+.btn-success:focus,
+.btn-success:active,
+.btn-success.show,
+.btn-success:focus-visible {
+    background-color: var(--verde-mid, #406d46) !important;
+    border-color: var(--verde-mid, #406d46) !important;
+    box-shadow: 0 0 0 0.2rem rgba(44, 110, 60, 0.25) !important;
+}
+
+.text-success,
+.badge.text-success,
+.border-success {
+    color: var(--verde-main, #2c6e3c) !important;
+    border-color: var(--verde-main, #2c6e3c) !important;
 }
 
 .form-check-input {
