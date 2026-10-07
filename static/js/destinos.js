@@ -16,10 +16,13 @@ document.addEventListener('DOMContentLoaded', function () {
             card.style.display = shouldShow ? '' : 'none';
         });
 
-        button.classList.toggle('d-none', visibleCount >= cards.length);
-        button.innerHTML = visibleCount >= cards.length
-            ? '<i class="bi bi-check-circle me-2"></i>Mostrando todos'
-            : '<i class="bi bi-chevron-down me-2"></i>Ver más';
+        if (visibleCount >= cards.length) {
+            button.classList.add('d-none');
+            button.innerHTML = '<i class="bi bi-check-circle me-2"></i>Mostrando todos';
+        } else {
+            button.classList.remove('d-none');
+            button.innerHTML = '<i class="bi bi-chevron-down me-2"></i>Ver más';
+        }
     };
 
     cards.forEach((card, index) => {
