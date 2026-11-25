@@ -31,15 +31,17 @@ def enviar_comprobante(request):
 
         pago_existente = getattr(reserva, 'pago', None)
         if pago_existente and pago_existente.estado_transaccion in ['pendiente', 'aprobado']:
-            messages.warning(request, "Esta reserva ya tiene un comprobante registrado o en proceso de revisión.")
-            return redirect('mis_comprobantes')
+            if not es_penalidad:
+                messages.warning(request, "Esta reserva ya tiene un comprobante registrado o en proceso de revisión.")
+                return redirect('mis_comprobantes')
 
-        form = ComprobantePagoForm(request.POST, request.FILES)
+        form = ComprobantePagoForm(request.POST, request.FILES, instance=pago_existente)
         if form.is_valid():
             pago = form.save(commit=False)
             pago.reserva = reserva
             pago.monto = reserva.penalidad if es_penalidad else reserva.monto_total
             pago.estado_transaccion = 'pendiente'
+            pago.nota_admin = ''
             pago.save()
 
             crear_notificacion_sistema(
@@ -64,12 +66,19 @@ def enviar_comprobante(request):
 
     selected_reserva_id = request.GET.get('reserva_id', '')
     tipo_solicitado = (request.GET.get('tipo', '') or '').strip().lower()
-    reservas_elegibles = list(Reserva.objects.filter(
-        usuario=request.user
-    ).filter(
+    reservas_elegibles = []
+    candidatas = Reserva.objects.filter(usuario=request.user).filter(
         Q(estado_reserva='pendiente') |
         Q(estado_cancelacion='aprobada', penalidad__gt=0)
-    ).exclude(pago__isnull=False))
+    ).select_related('pago')
+
+    for reserva_elegible in candidatas:
+        es_penalidad = reserva_elegible.estado_cancelacion == 'aprobada' and reserva_elegible.penalidad and reserva_elegible.penalidad > 0
+        pago_existente = getattr(reserva_elegible, 'pago', None)
+        if es_penalidad:
+            reservas_elegibles.append(reserva_elegible)
+        elif not pago_existente or pago_existente.estado_transaccion == 'rechazado':
+            reservas_elegibles.append(reserva_elegible)
 
     selected_tipo = 'reserva'
     selected_reserva = None

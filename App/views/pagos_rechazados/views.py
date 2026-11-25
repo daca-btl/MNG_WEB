@@ -65,8 +65,14 @@ def admin_reconsiderar_pago(request, pk):
         pago.save()
 
         if pago.reserva:
-            pago.reserva.estado_reserva = 'confirmada'
-            pago.reserva.save()
+            es_penalidad = (
+                pago.reserva.estado_cancelacion == 'aprobada'
+                and pago.reserva.penalidad
+                and pago.reserva.penalidad > 0
+            )
+            if not es_penalidad:
+                pago.reserva.estado_reserva = 'confirmada'
+                pago.reserva.save()
 
         crear_notificacion_sistema(
             usuario=request.user,

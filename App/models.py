@@ -954,8 +954,6 @@ class Pago(models.Model):
             if not es_penalidad:
                 self.reserva.estado_reserva = 'confirmada'
                 self.reserva.save()
-        elif self.estado_transaccion == 'rechazado' and self.reserva and (self.reserva.estado_reserva == 'pendiente'):
-            pass
         super().save(*args, **kwargs)
 
 # ==============================================================================

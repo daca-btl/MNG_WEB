@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
-from App.models import Usuario, Paquete, Reserva, Categoria, Pago, Temporada, Tarifa, ModificacionReserva
+from App.models import Usuario, Paquete, Reserva, Categoria, Pago, Temporada, Tarifa, ModificacionReserva, Blog, PQRS
 from App.forms.usuario.forms import PerfilTuristaForm
 from App.forms.pago.forms import ComprobantePagoForm
 from autenticacion.forms import IniciarSesionForm
@@ -1106,3 +1106,171 @@ class ModificacionPersonasReservaTests(TestCase):
         self.assertContains(response, 'Debes indicar un motivo válido')
         self.assertEqual(reserva.numero_adultos, 2)
         self.assertEqual(reserva.numero_menores, 1)
+
+class ModulosPublicosQATests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.usuario = Usuario.objects.create_user(
+            username='qa_publico',
+            email='qa_publico@monagua.com',
+            password='Password123#',
+            first_name='QA',
+            last_name='Monagua',
+            rol=Usuario.Roles.CLIENTE,
+        )
+        self.categoria = Categoria.objects.create(nombre='QA Penalidad')
+        self.paquete = Paquete.objects.create(
+            nombre='Paquete Penalidad QA', descripcion='Paquete para pruebas de penalidad',
+            categoria=self.categoria, punto_encuentro='Plaza QA', hora_encuentro='08:00:00',
+            dias_duracion=1, noches_duracion=1,
+            imagen=SimpleUploadedFile('penalidad_paquete.jpg', b'imagen', content_type='image/jpeg')
+        )
+
+    def test_terminos_nosotros_y_pqrs_publica_responden(self):
+        for nombre in ('terminos', 'nosotros', 'pqrs_publica'):
+            response = self.client.get(reverse(nombre))
+            self.assertEqual(response.status_code, 200)
+
+    def test_blog_publico_oculta_borradores_y_muestra_publicados(self):
+        publicado = Blog.objects.create(
+            usuario=self.usuario,
+            titulo='Ruta publicada QA',
+            contenido='Contenido suficiente para validar la publicación pública del blog.',
+            estado=True,
+        )
+        borrador = Blog.objects.create(
+            usuario=self.usuario,
+            titulo='Ruta borrador QA',
+            contenido='Contenido suficiente para validar que un borrador permanece oculto.',
+            estado=False,
+        )
+
+        listado = self.client.get(reverse('blog'))
+        self.assertEqual(listado.status_code, 200)
+        self.assertContains(listado, publicado.titulo)
+        self.assertNotContains(listado, borrador.titulo)
+
+        detalle = self.client.get(reverse('detalle_blog', args=[publicado.id]))
+        self.assertEqual(detalle.status_code, 200)
+        self.assertContains(detalle, publicado.titulo)
+
+        borrador_anonimo = self.client.get(reverse('detalle_blog', args=[borrador.id]))
+        self.assertEqual(borrador_anonimo.status_code, 404)
+
+    def test_api_pqrs_publica_valida_crea_radicado(self):
+        response = self.client.post(reverse('api_guardar_pqrs'), {
+            'tipo': 'queja',
+            'asunto': 'Consulta sobre reserva',
+            'descripcion': 'Necesito información detallada sobre el estado de mi reserva.',
+            'nombre_completo': 'Juan Perez',
+            'correo': 'juan@example.com',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        pqrs = PQRS.objects.get(correo='juan@example.com')
+        self.assertTrue(pqrs.radicado.startswith('PQRS-'))
+
+    def test_pqrs_autenticada_queda_asociada_al_usuario(self):
+        self.client.force_login(self.usuario)
+        response = self.client.post(reverse('guardar_pqrs'), {
+            'tipo': 'peticion',
+            'asunto': 'Solicitud de información',
+            'descripcion': 'Deseo recibir información adicional sobre los paquetes disponibles.',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        pqrs = PQRS.objects.get(usuario=self.usuario)
+        self.assertEqual(pqrs.estado, 'abierto')
+
+        mis_pqrs = self.client.get(reverse('mis_pqrs'))
+        self.assertEqual(mis_pqrs.status_code, 200)
+        self.assertContains(mis_pqrs, pqrs.asunto)
+
+    def test_pago_penalidad_actualiza_comprobante_original_sin_confirmar_reserva(self):
+        reserva = Reserva.objects.create(
+            usuario=self.usuario,
+            paquete=self.paquete,
+            monto_total=Decimal('350000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='cancelada',
+            estado_cancelacion='aprobada',
+            penalidad=Decimal('35000.00'),
+            fecha_inicio=date.today() + timedelta(days=10),
+            motivo_cancelacion='Cambio de planes'
+        )
+        pago_original = Pago.objects.create(
+            reserva=reserva,
+            referencia='ORIGINAL-001',
+            banco_origen='Bancolombia',
+            metodo_pago='Transferencia Bancaria',
+            monto=Decimal('350000.00'),
+            imagen_comprobante=SimpleUploadedFile('original.gif', b'GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;', content_type='image/gif'),
+            estado_transaccion='aprobado'
+        )
+        self.client.force_login(self.usuario)
+
+        response = self.client.post(reverse('enviar_comprobante'), {
+            'reserva': reserva.id,
+            'referencia': 'PENALIDAD-001',
+            'banco_origen': 'Daviplata',
+            'metodo_pago': 'Transferencia Bancaria',
+            'descripcion': 'Pago de penalidad'
+        })
+
+        self.assertEqual(response.status_code, 302)
+        pago_original.refresh_from_db()
+        reserva.refresh_from_db()
+        self.assertEqual(Pago.objects.filter(reserva=reserva).count(), 1)
+        self.assertEqual(pago_original.referencia, 'PENALIDAD-001')
+        self.assertEqual(pago_original.monto, Decimal('35000.00'))
+        self.assertEqual(pago_original.estado_transaccion, 'pendiente')
+        self.assertEqual(reserva.estado_reserva, 'cancelada')
+
+    def test_administrador_aprueba_monto_de_penalidad_sin_confirmar_reserva(self):
+        reserva = Reserva.objects.create(
+            usuario=self.usuario,
+            paquete=self.paquete,
+            monto_total=Decimal('350000.00'),
+            numero_adultos=2,
+            numero_menores=0,
+            estado_reserva='cancelada',
+            estado_cancelacion='aprobada',
+            penalidad=Decimal('35000.00')
+        )
+        pago = Pago.objects.create(
+            reserva=reserva,
+            referencia='PENALIDAD-ADMIN-001',
+            banco_origen='Daviplata',
+            metodo_pago='Transferencia Bancaria',
+            monto=Decimal('35000.00'),
+            imagen_comprobante=SimpleUploadedFile('penalidad.gif', b'GIF89a', content_type='image/gif'),
+            estado_transaccion='pendiente'
+        )
+        admin = Usuario.objects.create_user(
+            username='admin_penalidad',
+            email='admin_penalidad@monagua.com',
+            password='Password123#',
+            rol=Usuario.Roles.ADMIN,
+            is_staff=True,
+            is_superuser=False,
+            tipo_documento='CC',
+            numero_documento='ADMIN-PENALIDAD-001',
+            telefono='3000000099'
+        )
+        self.client.force_login(admin)
+
+        response = self.client.post(reverse('admin_revisar_comprobante', args=[pago.id]), {
+            'banco_origen': 'Daviplata',
+            'monto': '35000.00',
+            'estado_transaccion': 'aprobado',
+            'nota_admin': 'Penalidad verificada'
+        })
+
+        self.assertEqual(response.status_code, 302)
+        pago.refresh_from_db()
+        reserva.refresh_from_db()
+        self.assertEqual(pago.estado_transaccion, 'aprobado')
+        self.assertEqual(reserva.estado_reserva, 'cancelada')
